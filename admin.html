@@ -131,10 +131,10 @@ function vProducts(){
    </div>
    <div class="f2">
     <div class="fld"><label>Image URL</label><input id="pf-img" placeholder="https://…"></div>
-    <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><select id="pf-sup" style="width:130px"><option value="CJ">CJ</option><option value="PK">PK Local</option><option value="SELLER">Seller</option></select><input id="pf-sku" placeholder="Supplier SKU"></div></div>
+    <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><select id="pf-sup" style="width:130px"><option value="CJ">CJ</option><option value="PK">PK Local</option></select><input id="pf-sku" placeholder="Supplier SKU"></div></div>
    </div>
    <div class="f2">
-    <div class="fld"><label>Available countries</label><input id="pf-countries" placeholder="ALL — or codes like PK,US,GB"><small class="hint">ALL = every country in the store selector.</small></div>
+    <div class="fld"><label>Country — har product sirf EK country ke liye</label><select id="pf-countries">${GD_COUNTRIES.map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('')}</select><small class="hint">Product sirf isi country ke store me dikhega, aur sirf wahi ke customers khareed sakenge.</small></div>
     <div class="fld"><label>Colors / Sizes (comma separated)</label><input id="pf-variants" placeholder="Black,White | S,M,L"></div>
    </div>
    <div class="fld"><label>Description</label><textarea id="pf-desc" rows="2"></textarea></div>
@@ -144,7 +144,7 @@ function vProducts(){
    ${editId?'<button class="btn ghost" onclick="editId=null;vProducts()">Cancel edit</button>':''}</div>
   </div>
   <div class="card"><h3>Import products (CSV)</h3>
-   <p class="hint" style="margin:5px 0 8px">One product per line: <b>name, category-slug, subcategory, price, sale, image-url, supplier, sku, countries, stock</b> (use ALL for countries). Lines starting with # are skipped.</p>
+   <p class="hint" style="margin:5px 0 8px">One product per line: <b>name, category-slug, subcategory, price, sale, image-url, supplier, sku, countries, stock</b> (countries me sirf EK country code — jese PK). Lines starting with # are skipped.</p>
    <textarea id="csvIn" rows="4" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px" placeholder="Example Product, electronics, Smartwatches, 39.99, 29.99, https://…, CJ, CJ-XX-1, ALL, 100"></textarea>
    <button class="btn" style="margin-top:9px" onclick="importCSV()">Import CSV</button></div>
   <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
@@ -161,7 +161,7 @@ function fillForm(id){
   const p = gdProducts().find(x=>x.id===id); if (!p) return;
   $('#pf-name').value=p.name; $('#pf-cat').value=p.cat; $('#pf-sub').value=p.sub||''; $('#pf-price').value=p.price;
   $('#pf-sale').value=p.sale||''; $('#pf-stock').value=p.stock; $('#pf-img').value=p.img||''; $('#pf-sup').value=p.supplier||'CJ';
-  $('#pf-sku').value=p.sku||''; $('#pf-countries').value = p.countries==='ALL'?'ALL':(p.countries||[]).join(',');
+  $('#pf-sku').value=p.sku||''; $('#pf-countries').value = (p.countries && p.countries !== 'ALL' && p.countries[0]) || 'PK';
   $('#pf-variants').value = ((p.colors||[]).join(',')||'') + ((p.sizes&&p.sizes.length)?' | '+p.sizes.join(','):'');
   $('#pf-desc').value=p.desc||''; $('#pf-feat').checked=!!p.featured; $('#pf-new').checked=!!p.isNew;
   window.scrollTo(0,0);
@@ -171,13 +171,12 @@ function saveProduct(){
   const name = $('#pf-name').value.trim(), price = parseFloat($('#pf-price').value);
   if (!name || isNaN(price)) { toast('Name and price are required'); return; }
   const vparts = $('#pf-variants').value.split('|');
-  const cRaw = $('#pf-countries').value.trim();
   const data = {
     name, cat: $('#pf-cat').value, sub: $('#pf-sub').value.trim() || 'General',
     price, sale: parseFloat($('#pf-sale').value) || null, stock: parseInt($('#pf-stock').value) || 0,
     img: $('#pf-img').value.trim() || 'https://picsum.photos/seed/'+Date.now()+'/800/800',
     supplier: $('#pf-sup').value, sku: $('#pf-sku').value.trim(),
-    countries: (!cRaw || cRaw.toUpperCase()==='ALL') ? 'ALL' : cRaw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),
+    countries: [$('#pf-countries').value || 'PK'],
     colors: (vparts[0]||'').split(',').map(s=>s.trim()).filter(Boolean),
     sizes: (vparts[1]||'').split(',').map(s=>s.trim()).filter(Boolean),
     desc: $('#pf-desc').value.trim(), featured: $('#pf-feat').checked, isNew: $('#pf-new').checked,
@@ -195,7 +194,7 @@ function importCSV(){
   for (const ln of lines) {
     const f = ln.split(',').map(s=>s.trim());
     if (f.length < 10 || isNaN(parseFloat(f[3]))) continue;
-    prods.unshift({id:'p'+Date.now().toString(36)+n, name:f[0], cat:f[1], sub:f[2], price:parseFloat(f[3]), sale:parseFloat(f[4])||null, img:f[5], supplier:f[6]||'CJ', sku:f[7], countries: f[8].toUpperCase()==='ALL'?'ALL':f[8].split('|').map(s=>s.trim()), stock:parseInt(f[9])||50, colors:[], sizes:[], desc:'', specs:{}, days:[7,12], featured:false, isNew:true});
+    prods.unshift({id:'p'+Date.now().toString(36)+n, name:f[0], cat:f[1], sub:f[2], price:parseFloat(f[3]), sale:parseFloat(f[4])||null, img:f[5], supplier:f[6]||'CJ', sku:f[7], countries: [(f[8].split('|')[0] || 'PK').trim().toUpperCase()], stock:parseInt(f[9])||50, colors:[], sizes:[], desc:'', specs:{}, days:[7,12], featured:false, isNew:true});
     n++;
   }
   if (n) { gdSave('gd_products', prods); toast(n + ' products imported'); vProducts(); } else toast('No valid lines found');
