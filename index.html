@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GlobalDrop — Shop the World, Delivered to Your Door</title>
+<meta name="description" content="GlobalDrop is an international dropshipping store: electronics, fashion, home, beauty and more — with country-specific delivery, local-currency prices and trusted suppliers including CJ Dropshipping and Pakistani local sellers.">
+<meta property="og:title" content="GlobalDrop — Shop the World">
+<meta property="og:description" content="International shopping with country-specific products, local currency prices and reliable delivery.">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://gharthak312-droid.github.io/globaldrop/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"GlobalDrop","description":"International dropshipping store with country-specific catalog and local currency pricing."}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"GlobalDrop","potentialAction":{"@type":"SearchAction","target":"#/search?q={query}","query-input":"required name=query"}}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0e1526;--navy:#0b2447;--gold:#c9a227;--gold2:#e6c65c;--bg:#f7f8fa;--card:#fff;--line:#e5e8ee;--mut:#5b6474;--red:#d92d20;--green:#067647;--radius:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+h1,h2,h3,.disp{font-family:'Sora',sans-serif}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+img{display:block;max-width:100%}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px}
+.announce{background:var(--navy);color:#fff;text-align:center;font-size:13px;padding:8px 12px}
+header.site{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:60}
+.hrow{display:flex;align-items:center;gap:14px;padding:12px 0}
+.logo{font-family:'Sora';font-weight:800;font-size:24px;letter-spacing:-.5px}
+.logo span{color:var(--gold)}
+.searchbar{flex:1;display:flex;max-width:560px;position:relative}
+.searchbar input{flex:1;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px 0 0 12px;font-size:14px;outline:none}
+.searchbar input:focus{border-color:var(--gold)}
+.searchbar button{background:var(--ink);color:#fff;border:none;padding:0 18px;border-radius:0 12px 12px 0;font-weight:600}
+.suggest{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 40px rgba(10,20,40,.14);overflow:hidden;display:none;z-index:80}
+.suggest a{display:flex;gap:10px;align-items:center;padding:9px 12px;font-size:14px}
+.suggest a:hover{background:#f4f5f7}
+.suggest img{width:38px;height:38px;border-radius:8px;object-fit:cover}
+.hbtns{display:flex;gap:6px;align-items:center;margin-left:auto}
+.hbtn{background:none;border:none;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--ink);padding:6px 8px;border-radius:10px;position:relative}
+.hbtn:hover{background:#f4f5f7}
+.hbtn .ic{font-size:20px;line-height:1}
+.badge{position:absolute;top:0;right:2px;background:var(--red);color:#fff;font-size:10px;font-weight:700;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.ctrybtn{display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600}
+.ctrybtn:hover{border-color:var(--gold)}
+nav.cats{border-top:1px solid var(--line);background:#fff}
+nav.cats .wrap{display:flex;gap:2px;overflow-x:auto;padding:0 8px;scrollbar-width:none}
+nav.cats .wrap::-webkit-scrollbar{display:none}
+.catlink{white-space:nowrap;padding:10px 12px;font-size:13.5px;font-weight:500;border-bottom:2.5px solid transparent}
+.catlink:hover{color:var(--navy);border-color:var(--gold)}
+.hero{background:linear-gradient(120deg,#0b2447 0%,#123a6b 55%,#1b4f8a 100%);color:#fff;border-radius:0}
+.hero .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:center;padding:52px 16px}
+.hero h1{font-size:42px;line-height:1.12;letter-spacing:-1px}
+.hero h1 em{color:var(--gold2);font-style:normal}
+.hero p{color:#cdd8ea;margin:14px 0 22px;max-width:520px}
+.herocta{display:inline-block;background:var(--gold);color:#161106;font-weight:700;padding:13px 26px;border-radius:12px;font-size:15px}
+.herocta:hover{background:var(--gold2)}
+.heroimg{border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.heroimg img{width:100%;height:300px;object-fit:cover}
+.trustrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
+.trust{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;gap:12px;align-items:center}
+.trust .ic{font-size:26px}
+.trust b{font-size:14px;display:block}
+.trust small{color:var(--mut);font-size:12px}
+.sec{margin:34px 0 8px;display:flex;align-items:baseline;justify-content:space-between}
+.sec h2{font-size:22px;letter-spacing:-.4px}
+.sec a{font-size:13.5px;font-weight:600;color:var(--navy)}
+.catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:14px 0 6px}
+.catcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 12px;text-align:center;transition:.18s}
+.catcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(10,20,40,.09);border-color:var(--gold)}
+.catcard .ic{font-size:34px;margin-bottom:8px}
+.catcard b{font-size:13.5px;display:block}
+.catcard small{color:var(--mut);font-size:11.5px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;margin:14px 0 10px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:.18s;position:relative}
+.pcard:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(10,20,40,.10)}
+.pcard .im{aspect-ratio:1/1;overflow:hidden;background:#eef0f3}
+.pcard .im img{width:100%;height:100%;object-fit:cover;transition:.3s}
+.pcard:hover .im img{transform:scale(1.05)}
+.pcard .bd{padding:13px 14px 15px;display:flex;flex-direction:column;gap:5px;flex:1}
+.pcard h3{font-size:14.5px;font-weight:600;line-height:1.35;font-family:'Inter'}
+.price{font-weight:800;font-size:16.5px}
+.price s{color:var(--mut);font-weight:500;font-size:13px;margin-right:6px}
+.off{background:var(--red);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+.chip{font-size:10.5px;font-weight:700;letter-spacing:.3px;border-radius:20px;padding:3px 8px;display:inline-block}
+.chip.cj{background:#e8f0fe;color:#174ea6}
+.chip.pk{background:#e6f4ea;color:#137333}
+.chip.new{background:#fef3c7;color:#92400e}
+.pcard .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pcard .ship{font-size:12px;color:var(--green);font-weight:600}
+.pcard .acts{margin-top:auto;display:flex;gap:8px;padding-top:8px}
+.btn{background:var(--ink);color:#fff;border:none;font-weight:700;padding:10px 16px;border-radius:11px;font-size:14px}
+.btn:hover{background:#1d2a45}
+.btn.gold{background:var(--gold);color:#161106}
+.btn.gold:hover{background:var(--gold2)}
+.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.sm{padding:8px 12px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.iconbtn{border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:9px 11px;font-size:15px}
+.iconbtn.on{border-color:var(--red);color:var(--red)}
+.banner2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+.promo{border-radius:20px;padding:28px;color:#fff;min-height:150px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;background-size:cover;background-position:center;position:relative;overflow:hidden}
+.promo:before{content:'';position:absolute;inset:0;background:linear-gradient(8deg,rgba(5,12,26,.78),rgba(5,12,26,.05) 65%)}
+.promo>*{position:relative}
+.promo h3{font-size:21px}
+.promo p{font-size:13px;color:#e8ecf4}
+footer{background:var(--ink);color:#c6cdd9;margin-top:52px}
+footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:26px;padding:42px 0 26px}
+footer h4{color:#fff;font-size:14px;margin-bottom:12px;font-family:'Inter'}
+footer a{display:block;font-size:13.5px;padding:3px 0;color:#c6cdd9}
+footer a:hover{color:#fff}
+footer .fine{border-top:1px solid #26314a;padding:16px 0 22px;font-size:12.5px;color:#8b95a9;display:flex;flex-direction:column;gap:6px}
+.newsrow{display:flex;gap:8px;margin-top:10px}
+.newsrow input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid #26314a;background:#141e33;color:#fff;font-size:13.5px}
+.layout{display:grid;grid-template-columns:250px 1fr;gap:22px;margin:22px 0}
+.filters{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;height:fit-content;position:sticky;top:130px}
+.filters h4{font-size:13px;text-transform:uppercase;letter-spacing:.6px;margin:14px 0 8px;color:var(--mut)}
+.filters h4:first-child{margin-top:0}
+.filters label{display:flex;gap:8px;font-size:13.5px;padding:3.5px 0;align-items:center;cursor:pointer}
+.filters input[type=number]{width:100%;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px}
+select.sel{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;background:#fff}
+.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap}
+.crumbs{font-size:13px;color:var(--mut);margin:16px 0 4px}
+.crumbs a:hover{color:var(--navy)}
+.pdp{display:grid;grid-template-columns:1fr 1fr;gap:34px;margin:18px 0}
+.pdp .gal{border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#fff}
+.pdp .gal img{width:100%;aspect-ratio:1/1;object-fit:cover}
+.pdp h1{font-size:27px;line-height:1.25;letter-spacing:-.4px}
+.pdp .big{font-size:28px;font-weight:800}
+.optrow{margin:13px 0}
+.optrow b{font-size:13px;display:block;margin-bottom:7px}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{border:1.5px solid var(--line);background:#fff;padding:8px 14px;border-radius:10px;font-size:13.5px;font-weight:600}
+.opt.on{border-color:var(--ink);background:var(--ink);color:#fff}
+.qty{display:inline-flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.qty button{width:36px;height:38px;border:none;background:#fff;font-size:16px}
+.qty input{width:44px;text-align:center;border:none;font-size:14px;font-weight:700}
+.infobox{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:16px 0;font-size:13.5px}
+.infobox div{display:flex;gap:10px;padding:4px 0}
+table.spec{width:100%;border-collapse:collapse;font-size:13.5px}
+table.spec td{padding:7px 10px;border-bottom:1px solid var(--line)}
+table.spec td:first-child{color:var(--mut);width:170px}
+.cartrow{display:grid;grid-template-columns:84px 1fr auto;gap:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:13px;margin-bottom:11px;align-items:center}
+.cartrow img{width:84px;height:84px;border-radius:12px;object-fit:cover}
+.sumbox{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;height:fit-content;position:sticky;top:130px}
+.sumbox .line{display:flex;justify-content:space-between;font-size:14px;padding:5px 0}
+.sumbox .tot{border-top:1px solid var(--line);margin-top:9px;padding-top:12px;font-weight:800;font-size:17px}
+.fld{margin-bottom:13px}
+.fld label{font-size:13px;font-weight:600;display:block;margin-bottom:5px}
+.fld input,.fld select,.fld textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:#fff;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--gold)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.payopt{border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;display:flex;gap:11px;align-items:flex-start;margin-bottom:10px;cursor:pointer;background:#fff}
+.payopt.on{border-color:var(--gold);background:#fdf8e7}
+.payopt small{display:block;color:var(--mut);font-size:12.5px}
+.payopt.dis{opacity:.55;cursor:not-allowed}
+.empty{background:#fff;border:1.5px dashed var(--line);border-radius:var(--radius);padding:44px 20px;text-align:center;color:var(--mut)}
+.empty .ic{font-size:42px;margin-bottom:8px}
+.modal{position:fixed;inset:0;background:rgba(8,14,28,.55);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:26px 14px;overflow:auto}
+.modal.open{display:flex}
+.sheet{background:#fff;border-radius:20px;max-width:520px;width:100%;padding:26px;animation:up .25s}
+.sheet.wide{max-width:760px}
+@keyframes up{from{transform:translateY(14px);opacity:0}}
+.ctrygrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:50vh;overflow:auto;margin-top:12px}
+.ctrygrid button{text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:10px 12px;font-size:13.5px;font-weight:500}
+.ctrygrid button:hover,.ctrygrid button.on{border-color:var(--gold);background:#fdf8e7}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:200;display:none;box-shadow:0 14px 34px rgba(0,0,0,.3)}
+.pill{display:inline-block;background:#eef1f5;border-radius:20px;padding:4px 11px;font-size:12px;font-weight:600;color:var(--mut)}
+.stars{color:var(--gold);letter-spacing:1px}
+.rev{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:10px}
+.hidden{display:none!important}
+.pagebox{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px;margin:20px 0;font-size:14.5px}
+.pagebox h1{font-size:25px;margin-bottom:14px}
+.pagebox h3{margin:18px 0 7px;font-size:16px}
+.pagebox p,.pagebox li{color:#39415a;margin-bottom:8px}
+.pagebox ul{padding-left:20px}
+@media(max-width:900px){
+ .hero .wrap{grid-template-columns:1fr;padding:36px 16px}
+ .hero h1{font-size:31px}
+ .trustrow{grid-template-columns:1fr 1fr}
+ .layout{grid-template-columns:1fr}
+ .filters{position:static}
+ .pdp{grid-template-columns:1fr}
+ .banner2{grid-template-columns:1fr}
+ footer .cols{grid-template-columns:1fr 1fr}
+ .searchbar{display:none}
+ .hbtn span.lbl{display:none}
+}
+</style>
+</head>
+<body>
+<div class="announce" id="announceBar"></div>
+<header class="site">
+  <div class="wrap">
+    <div class="hrow">
+      <a class="logo" href="#/">Global<span>Drop</span></a>
+      <div class="searchbar">
+        <input id="searchInput" type="text" placeholder="Search products, categories, brands…" autocomplete="off">
+        <button id="searchBtn">Search</button>
+        <div class="suggest" id="suggestBox"></div>
+      </div>
+      <div class="hbtns">
+        <button class="ctrybtn" id="ctryBtn" title="Choose your shipping country">🌍 <span id="ctryLabel">…</span></button>
+        <a class="hbtn" href="#/wishlist"><span class="ic">❤️</span><span class="lbl">Wishlist</span><span class="badge hidden" id="wishBadge"></span></a>
+        <a class="hbtn" href="#/cart"><span class="ic">🛒</span><span class="lbl">Cart</span><span class="badge hidden" id="cartBadge"></span></a>
+      </div>
+    </div>
+  </div>
+  <nav class="cats"><div class="wrap" id="catNav"></div></nav>
+</header>
+<main class="wrap" id="app"></main>
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <div class="logo" style="color:#fff">Global<span>Drop</span></div>
+        <p style="font-size:13.5px;margin-top:10px;max-width:320px">International shopping from verified suppliers — including CJ Dropshipping and Pakistani local sellers. Country-specific products, local currency prices, doorstep delivery.</p>
+        <div class="newsrow"><input id="newsEmail" type="email" placeholder="Email for offers"><button class="btn gold sm" id="newsBtn">Join</button></div>
+        <small id="newsMsg" style="color:#8b95a9"></small>
+      </div>
+      <div><h4>Shop</h4><a href="#/shop">All Products</a><a href="#/shop?sort=new">New Arrivals</a><a href="#/shop?sale=1">Sale &amp; Offers</a><a href="#/wishlist">Wishlist</a><a href="#/track">Track Your Order</a></div>
+      <div><h4>Customer Care</h4><a href="#/page/faq">FAQ</a><a href="#/page/shipping">Shipping &amp; Delivery</a><a href="#/page/returns">Returns &amp; Refunds</a><a href="#/page/payment">Payment Information</a><a href="#/page/contact">Contact Us</a></div>
+      <div><h4>Company</h4><a href="#/page/about">About Us</a><a href="#/page/privacy">Privacy Policy</a><a href="#/page/terms">Terms &amp; Conditions</a><a href="#/page/cookies">Cookie Policy</a></div>
+    </div>
+    <div class="fine">
+      <span>Prices are shown in your selected currency, converted from USD using daily exchange rates — conversions are estimates. The currency charged at checkout depends on the payment method you choose.</span>
+      <span>Demo catalog notice: the current product list is development demo data for building and testing. Real supplier products will replace it before public launch.</span>
+      <span>© 2026 GlobalDrop. All rights reserved.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="ctryModal"><div class="sheet">
+  <h3 style="font-size:19px">Choose your shipping country</h3>
+  <p style="color:var(--mut);font-size:13.5px;margin-top:5px">You will only see products listed for this country, with prices in its currency.</p>
+  <div class="ctrygrid" id="ctryGrid"></div>
+  <button class="btn ghost" style="margin-top:14px;width:100%" onclick="closeModal('ctryModal')">Close</button>
+</div></div>
+
+<div id="toast"></div>
+<script src="store-data.js"></script>
+<script>
+/* ============ GlobalDrop storefront app ============ */
+const S = {
+  country: gdLoad('gd_country', null),
+  rates: null, cur: 'USD',
+  cart: gdLoad('gd_cart', []),       /* {id, color, size, qty} */
+  wish: gdLoad('gd_wish', []),       /* [id] */
+  recent: gdLoad('gd_recent', [])
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P = () => gdProducts();
+const CAT = slug => gdCategories().find(c => c.slug === slug);
+const PROD = id => P().find(p => p.id === id);
+const money = usd => gdFmt(usd, S.cur, S.rates);
+const effPrice = p => (p.sale && p.sale < p.price) ? p.sale : p.price;
+const inCountry = p => gdAvailable(p, S.country);
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.style.display='block'; clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 2400); }
+function openModal(id){ $('#'+id).classList.add('open'); }
+function closeModal(id){ $('#'+id).classList.remove('open'); }
+function imgTag(p, cls){ return `<img ${cls?`class="${cls}"`:''} src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://picsum.photos/seed/${p.id}/800/800'">`; }
+
+/* ---------- header / chrome ---------- */
+function paintChrome(){
+  const st = gdSettings();
+  $('#announceBar').textContent = st.announcement;
+  document.querySelector('.logo').innerHTML = esc(st.name.replace(/Drop$/,'')) + '<span>Drop</span>';
+  const c = gdCountry(S.country);
+  $('#ctryLabel').textContent = c.code + ' · ' + c.cur;
+  const catNav = $('#catNav');
+  catNav.innerHTML = `<a class="catlink" href="#/shop">All Products</a>` + gdCategories().map(ct => {
+    const n = P().filter(p => p.cat === ct.slug && inCountry(p)).length;
+    return n ? `<a class="catlink" href="#/cat/${ct.slug}">${ct.icon} ${esc(ct.name)}</a>` : '';
+  }).join('');
+  const cb = $('#cartBadge'), wb = $('#wishBadge');
+  const cq = S.cart.reduce((a,i)=>a+i.qty,0);
+  cb.textContent = cq; cb.classList.toggle('hidden', !cq);
+  wb.textContent = S.wish.length; wb.classList.toggle('hidden', !S.wish.length);
+}
+function countryGrid(){
+  $('#ctryGrid').innerHTML = GD_COUNTRIES.map(c =>
+    `<button data-cc="${c.code}" class="${c.code===S.country?'on':''}">${esc(c.name)} <small style="color:var(--mut)">· ${c.cur}</small></button>`).join('');
+  document.querySelectorAll('#ctryGrid button').forEach(b => b.onclick = () => {
+    setCountry(b.dataset.cc); closeModal('ctryModal'); toast('Showing products for ' + gdCountry(S.country).name);
+  });
+}
+function setCountry(code){
+  S.country = code; gdSave('gd_country', code);
+  S.cur = gdCountry(code).cur;
+  paintChrome(); route();
+}
+$('#ctryBtn').onclick = () => { countryGrid(); openModal('ctryModal'); };
+
+/* ---------- search ---------- */
+const sIn = $('#searchInput'), sBox = $('#suggestBox');
+function doSearch(q){ if(q.trim()) location.hash = '#/search?q=' + encodeURIComponent(q.trim()); }
+$('#searchBtn').onclick = () => doSearch(sIn.value);
+sIn.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(sIn.value); });
+sIn.addEventListener('input', () => {
+  const q = sIn.value.trim().toLowerCase();
+  if (q.length < 2) { sBox.style.display = 'none'; return; }
+  const hits = P().filter(p => inCountry(p) && (p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (CAT(p.cat)||{}).name?.toLowerCase().includes(q))).slice(0,6);
+  sBox.innerHTML = hits.length ? hits.map(p => `<a href="#/product/${p.id}">${imgTag(p)}<span>${esc(p.name)}</span><b style="margin-left:auto">${money(effPrice(p))}</b></a>`).join('') : '<a>No matches — press Search to browse</a>';
+  sBox.style.display = 'block';
+});
+document.addEventListener('click', e => { if (!e.target.closest('.searchbar')) sBox.style.display = 'none'; });
+
+/* ---------- product card ---------- */
+function cardHTML(p){
+  const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
+  const wished = S.wish.includes(p.id);
+  return `<div class="pcard">
+    <a class="im" href="#/product/${p.id}">${imgTag(p)}</a>
+    <div class="bd">
+      <div class="meta"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL':p.supplier==='SELLER'?'LOCAL SELLER':'CJ DROPSHIPPING'}</span>${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
+      <a href="#/product/${p.id}"><h3>${esc(p.name)}</h3></a>
+      <div class="price">${off?`<s>${money(p.price)}</s>`:''}${money(effPrice(p))}${off?`<span class="off">-${off}%</span>`:''}</div>
+      <div class="ship">🚚 ${gdDeliveryDays(p, S.country)} · within ${esc(gdCountry(S.country).name)}</div>
+      <div class="acts">
+        <button class="btn sm" style="flex:1" onclick="addToCart('${p.id}')" ${p.stock<=0?'disabled':''}>Add to Cart</button>
+        <button class="iconbtn ${wished?'on':''}" title="Wishlist" onclick="toggleWish('${p.id}',this)">❤️</button>
+      </div>
+    </div></div>`;
+}
+function toggleWish(id, el){
+  const i = S.wish.indexOf(id);
+  if (i >= 0) S.wish.splice(i,1); else S.wish.push(id);
+  gdSave('gd_wish', S.wish); paintChrome();
+  if (el) el.classList.toggle('on', S.wish.includes(id));
+  if (location.hash.startsWith('#/wishlist')) route();
+  toast(S.wish.includes(id) ? 'Added to wishlist' : 'Removed from wishlist');
+}
+function addToCart(id, color, size, qty){
+  const p = PROD(id); if (!p || p.stock <= 0) return;
+  color = color ?? (p.colors && p.colors[0]) ?? ''; size = size ?? (p.sizes && p.sizes[0]) ?? ''; qty = qty || 1;
+  const key = i => i.id===id && i.color===color && i.size===size;
+  const ex = S.cart.find(key);
+  if (ex) ex.qty = Math.min(ex.qty + qty, p.stock); else S.cart.push({id, color, size, qty});
+  gdSave('gd_cart', S.cart); paintChrome(); toast('Added to cart — ' + p.name);
+}
+
+/* ---------- views ---------- */
+function homeView(){
+  const avail = P().filter(inCountry);
+  const feat = avail.filter(p => p.featured).slice(0,8);
+  const news = avail.filter(p => p.isNew).slice(0,4);
+  const sale = avail.filter(p => p.sale && p.sale < p.price).slice(0,4);
+  const recent = S.recent.map(PROD).filter(p => p && inCountry(p)).slice(0,4);
+  const cats = gdCategories().map(ct => ({ct, n: avail.filter(p=>p.cat===ct.slug).length})).filter(x => x.n);
+  $('#app').innerHTML = `
+  <section class="hero" style="margin:0 -16px"><div class="wrap">
+    <div><h1>Shop the world.<br><em>Delivered</em> to your door.</h1>
+    <p>Thousands of products from verified global suppliers — prices in ${esc(S.cur)}, delivery estimates for ${esc(gdCountry(S.country).name)}, and buyer protection on every order.</p>
+    <a class="herocta" href="#/shop">Start Shopping →</a></div>
+    <div class="heroimg"><img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1000&q=80" alt="Shopping" onerror="this.onerror=null;this.src='https://picsum.photos/seed/hero/1000/700'"></div>
+  </div></section>
+  <div class="trustrow">
+    <div class="trust"><span class="ic">🌍</span><div><b>Country-First Catalog</b><small>Only items deliverable to you</small></div></div>
+    <div class="trust"><span class="ic">🔒</span><div><b>Secure Checkout</b><small>Protected payments</small></div></div>
+    <div class="trust"><span class="ic">🚚</span><div><b>Tracked Delivery</b><small>Delivered within your country</small></div></div>
+    <div class="trust"><span class="ic">↩️</span><div><b>Easy Returns</b><small>Clear refund policy</small></div></div>
+  </div>
+  <div class="sec"><h2>Shop by Category</h2><a href="#/shop">View all →</a></div>
+  <div class="catgrid">${cats.map(x => `<a class="catcard" href="#/cat/${x.ct.slug}"><div class="ic">${x.ct.icon}</div><b>${esc(x.ct.name)}</b><small>${x.n} products</small></a>`).join('')}</div>
+  ${feat.length?`<div class="sec"><h2>⭐ Trending Products</h2><a href="#/shop">Shop all →</a></div><div class="pgrid">${feat.map(cardHTML).join('')}</div>`:''}
+  <div class="banner2">
+    <a class="promo" href="#/shop?sale=1" style="background-image:url('https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1000&q=80')"><h3>Sale &amp; Offers</h3><p>Genuine discounts on selected products — while stock lasts.</p></a>
+    <a class="promo" href="#/cat/fashion" style="background-image:url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80')"><h3>Pakistani Fashion, Local Prices</h3><p>Premium cotton clothing from local sellers — delivered in 2–4 days inside Pakistan.</p></a>
+  </div>
+  ${news.length?`<div class="sec"><h2>🆕 New Arrivals</h2><a href="#/shop?sort=new">View all →</a></div><div class="pgrid">${news.map(cardHTML).join('')}</div>`:''}
+  ${sale.length?`<div class="sec"><h2>🏷️ Bestselling Deals</h2></div><div class="pgrid">${sale.map(cardHTML).join('')}</div>`:''}
+  ${recent.length?`<div class="sec"><h2>Recently Viewed</h2></div><div class="pgrid">${recent.map(cardHTML).join('')}</div>`:''}
+  <div class="sec"><h2>What shoppers say</h2></div>
+  <div class="empty"><div class="ic">⭐</div>Customer reviews will appear here once real orders are delivered and reviewed. We never publish invented testimonials.</div>`;
+  window.scrollTo(0,0);
+}
+
+function shopView(params){
+  const q = (params.get('q') || '').toLowerCase();
+  const catF = params.get('cat') || '';
+  const subF = params.get('sub') || '';
+  const saleOnly = params.get('sale') === '1';
+  const sort = params.get('sort') || 'pop';
+  const supF = params.get('sup') || '';
+  const minP = parseFloat(params.get('min') || ''), maxP = parseFloat(params.get('max') || '');
+  let list = P().filter(inCountry);
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  if (catF) list = list.filter(p => p.cat === catF);
+  if (subF) list = list.filter(p => p.sub === subF);
+  if (saleOnly) list = list.filter(p => p.sale && p.sale < p.price);
+  if (supF) list = list.filter(p => p.supplier === supF);
+  if (!isNaN(minP)) list = list.filter(p => effPrice(p) >= minP);
+  if (!isNaN(maxP)) list = list.filter(p => effPrice(p) <= maxP);
+  if (sort === 'low') list.sort((a,b)=>effPrice(a)-effPrice(b));
+  else if (sort === 'high') list.sort((a,b)=>effPrice(b)-effPrice(a));
+  else if (sort === 'new') list.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0));
+  else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
+  const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : 'All Products');
+  const catsAvail = gdCategories().map(ct => ({ct, n: P().filter(p=>p.cat===ct.slug && inCountry(p)).length})).filter(x=>x.n);
+  $('#app').innerHTML = `
+  <div class="crumbs"><a href="#/">Home</a> › ${catF?`<a href="#/shop">Shop</a> › ${title}`:title}</div>
+  <div class="layout">
+    <aside class="filters">
+      <h4>Categories</h4>
+      <label><input type="radio" name="fcat" ${!catF?'checked':''} onchange="shopGo('cat','')"> All categories</label>
+      ${catsAvail.map(x=>`<label><input type="radio" name="fcat" ${catF===x.ct.slug?'checked':''} onchange="shopGo('cat','${x.ct.slug}')"> ${esc(x.ct.name)} (${x.n})</label>`).join('')}
+      <h4>Supplier</h4>
+      <label><input type="radio" name="fsup" ${!supF?'checked':''} onchange="shopGo('sup','')"> All suppliers</label>
+      <label><input type="radio" name="fsup" ${supF==='CJ'?'checked':''} onchange="shopGo('sup','CJ')"> CJ Dropshipping</label>
+      <label><input type="radio" name="fsup" ${supF==='PK'?'checked':''} onchange="shopGo('sup','PK')"> Pakistani local</label>
+      <h4>Price (USD)</h4>
+      <div class="f2"><input type="number" id="fMin" placeholder="Min" value="${isNaN(minP)?'':minP}"><input type="number" id="fMax" placeholder="Max" value="${isNaN(maxP)?'':maxP}"></div>
+      <button class="btn ghost sm" style="margin-top:9px;width:100%" onclick="shopPrice()">Apply price</button>
+      <h4>Offers</h4>
+      <label><input type="checkbox" ${saleOnly?'checked':''} onchange="shopGo('sale',this.checked?'1':'')"> On sale only</label>
+    </aside>
+    <div>
+      <div class="toolbar"><h2 style="font-size:21px">${title} <small style="color:var(--mut);font-size:13px">(${list.length} products for ${esc(gdCountry(S.country).name)})</small></h2>
+      <select class="sel" onchange="shopGo('sort',this.value)">
+        <option value="pop" ${sort==='pop'?'selected':''}>Sort: Popular</option>
+        <option value="new" ${sort==='new'?'selected':''}>Sort: Newest</option>
+        <option value="low" ${sort==='low'?'selected':''}>Price: Low to High</option>
+        <option value="high" ${sort==='high'?'selected':''}>Price: High to Low</option>
+      </select></div>
+      ${subF?`<p style="margin-bottom:8px"><span class="pill">${esc(subF)}</span> <a href="#/cat/${catF}" style="font-size:13px;color:var(--navy);font-weight:600">✕ clear</a></p>`:''}
+      ${list.length ? `<div class="pgrid">${list.map(cardHTML).join('')}</div>` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`}
+    </div>
+  </div>`;
+  window.scrollTo(0,0);
+}
+function shopGo(k, v){
+  const h = location.hash; const base = h.split('?')[0];
+  const params = new URLSearchParams(h.includes('?') ? h.split('?')[1] : '');
+  if (k === 'cat') { if (v) { location.hash = '#/cat/' + v; return; } params.delete('cat'); params.delete('sub'); }
+  else if (v) params.set(k, v); else params.delete(k);
+  const qs = params.toString();
+  location.hash = (base === '#/' || base === '#' ? '#/shop' : base) + (qs ? '?' + qs : '');
+}
+function shopPrice(){
+  const params = new URLSearchParams(location.hash.includes('?') ? location.hash.split('?')[1] : '');
+  const mn = $('#fMin').value, mx = $('#fMax').value;
+  if (mn) params.set('min', mn); else params.delete('min');
+  if (mx) params.set('max', mx); else params.delete('max');
+  location.hash = '#/shop?' + params.toString();
+}
+function categoryView(slug, params){
+  const ct = CAT(slug);
+  if (!ct) { location.hash = '#/shop'; return; }
+  const subs = ct.subs.map(s => ({s, n: P().filter(p=>p.cat===slug && p.sub===s && inCountry(p)).length})).filter(x=>x.n);
+  const p2 = new URLSearchParams(params.toString()); p2.set('cat', slug);
+  shopView(p2);
+  const app = $('#app');
+  const subbar = subs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px">${subs.map(x=>`<a class="pill" style="padding:7px 13px" href="#/shop?cat=${slug}&sub=${encodeURIComponent(x.s)}">${esc(x.s)} (${x.n})</a>`).join('')}</div>` : '';
+  const tb = app.querySelector('.toolbar');
+  if (tb) tb.insertAdjacentHTML('afterend', subbar);
+}
+/* ---------- product page ---------- */
+let pdpSel = {color:'', size:'', qty:1};
+function productView(id){
+  const p = PROD(id);
+  if (!p) { $('#app').innerHTML = '<div class="empty" style="margin-top:26px"><div class="ic">📦</div>Product not found.</div>'; return; }
+  if (!S.recent.includes(id)) { S.recent.unshift(id); S.recent = S.recent.slice(0,8); gdSave('gd_recent', S.recent); }
+  pdpSel = {color:(p.colors||[])[0]||'', size:(p.sizes||[])[0]||'', qty:1};
+  const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
+  const ct = CAT(p.cat) || {name:p.cat, slug:p.cat};
+  const rel = P().filter(x => x.cat===p.cat && x.id!==p.id && inCountry(x)).slice(0,4);
+  const revs = gdLoad('gd_reviews', []).filter(r => r.pid === id);
+  const avail = inCountry(p);
+  $('#app').innerHTML = `
+  <div class="crumbs"><a href="#/">Home</a> › <a href="#/cat/${ct.slug}">${esc(ct.name)}</a> › ${esc(p.sub)} › ${esc(p.name)}</div>
+  <div class="pdp">
+    <div class="gal">${imgTag(p)}</div>
+    <div>
+      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL SUPPLIER':p.supplier==='SELLER'?'LOCAL SELLER':'CJ DROPSHIPPING'}</span><span class="pill">SKU: ${esc(p.sku)}</span>${p.isNew?'<span class="chip new">NEW</span>':''}</div>
+      <h1>${esc(p.name)}</h1>
+      <div style="margin:10px 0"><span class="big">${money(effPrice(p))}</span> ${off?`<s style="color:var(--mut)">${money(p.price)}</s> <span class="off">SAVE ${off}%</span>`:''}</div>
+      <p style="color:var(--mut);font-size:13px">Price in ${esc(S.cur)} (converted from USD at today's rate). ${p.stock>0?`<b style="color:var(--green)">In stock (${p.stock} available)</b>`:'<b style="color:var(--red)">Out of stock</b>'}</p>
+      ${!avail?`<div class="infobox" style="border-color:#fda29b;background:#fff5f4">⚠️ This product cannot be delivered to ${esc(gdCountry(S.country).name)}. Change your shipping country from the top bar to check other destinations.</div>`:''}
+      ${(p.colors&&p.colors.length)?`<div class="optrow"><b>Color: <span id="selColor">${esc(pdpSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===pdpSel.color?'on':''}" onclick="pdpPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      ${(p.sizes&&p.sizes.length)?`<div class="optrow"><b>Size: <span id="selSize">${esc(pdpSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===pdpSel.size?'on':''}" onclick="pdpPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="pdpQty(-1)">−</button><input id="pdpQtyIn" value="1" readonly><button onclick="pdpQty(1)">+</button></span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <button class="btn gold" style="flex:1;min-width:150px" onclick="pdpAdd(false)" ${(!avail||p.stock<=0)?'disabled':''}>🛒 Add to Cart</button>
+        <button class="btn" style="flex:1;min-width:150px" onclick="pdpAdd(true)" ${(!avail||p.stock<=0)?'disabled':''}>Buy Now</button>
+        <button class="iconbtn ${S.wish.includes(p.id)?'on':''}" onclick="toggleWish('${p.id}',this);this.classList.toggle('on')">❤️</button>
+      </div>
+      <div class="infobox">
+        <div>🚚 <span><b>Delivery within ${esc(gdCountry(S.country).name)}:</b> estimated ${gdDeliveryDays(p, S.country)}</span></div>
+        <div>↩️ <span><b>Returns:</b> within 7 days of delivery for faulty or wrong items — see Returns policy</span></div>
+        <div>🔒 <span><b>Buyer protection:</b> full refund if your order never arrives</span></div>
+        <div>🏷️ <span><b>Sold by:</b> ${p.supplier==='PK'?'Pakistani local supplier (via GlobalDrop)':p.supplier==='SELLER'?'Independent seller on GlobalDrop':'CJ Dropshipping (via GlobalDrop)'}</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="pagebox"><h3 style="margin-top:0">Product Description</h3><p>${esc(p.desc)}</p>
+  ${p.specs?`<h3>Specifications</h3><table class="spec">${Object.entries(p.specs).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`:''}</div>
+  <div class="sec"><h2>Customer Reviews</h2></div>
+  <div id="revList">${revs.length ? revs.map(revHTML).join('') : '<div class="empty"><div class="ic">⭐</div>No reviews yet for this product. Reviews appear here after real customers receive their orders.</div>'}</div>
+  <div class="pagebox"><h3 style="margin-top:0">Write a review</h3>
+    <div class="f2"><div class="fld"><label>Your name</label><input id="revName" type="text"></div>
+    <div class="fld"><label>Your email (to verify your purchase)</label><input id="revEmail" type="email"></div></div>
+    <div class="fld"><label>Your rating</label><select id="revStars" class="sel"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+    <div class="fld"><label>Review</label><textarea id="revText" rows="3" placeholder="How was the product quality and delivery?"></textarea></div>
+    <button class="btn" onclick="submitReview('${p.id}')">Submit review</button>
+  </div>
+  ${rel.length?`<div class="sec"><h2>Related Products</h2></div><div class="pgrid">${rel.map(cardHTML).join('')}</div>`:''}`;
+  window.scrollTo(0,0);
+}
+function revHTML(r){
+  return `<div class="rev"><div style="display:flex;gap:9px;align-items:center"><b>${esc(r.name)}</b>${r.verified?'<span class="chip pk">VERIFIED PURCHASE</span>':''}<span class="stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span><small style="color:var(--mut);margin-left:auto">${esc(r.date)}</small></div><p style="margin-top:6px;font-size:14px">${esc(r.text)}</p></div>`;
+}
+function pdpPick(k, v, el){ pdpSel[k] = v; el.parentElement.querySelectorAll('.opt').forEach(o=>o.classList.remove('on')); el.classList.add('on'); const s = $('#sel'+(k==='color'?'Color':'Size')); if (s) s.textContent = v; }
+function pdpQty(d){ pdpSel.qty = Math.max(1, pdpSel.qty + d); $('#pdpQtyIn').value = pdpSel.qty; }
+function pdpAdd(buy){
+  const id = location.hash.split('/')[2];
+  addToCart(id, pdpSel.color, pdpSel.size, pdpSel.qty);
+  if (buy) location.hash = '#/checkout';
+}
+function submitReview(pid){
+  const name = $('#revName').value.trim(), email = $('#revEmail').value.trim().toLowerCase();
+  const text = $('#revText').value.trim();
+  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Please add your name and a valid email'); return; }
+  if (!text) { toast('Please write something first'); return; }
+  const verified = gdLoad('gd_orders', []).some(o => o.email.toLowerCase() === email && o.items.some(i => i.id === pid));
+  const revs = gdLoad('gd_reviews', []);
+  revs.unshift({pid, name, stars: parseInt($('#revStars').value), text, verified, date: new Date().toLocaleDateString('en-GB')});
+  gdSave('gd_reviews', revs); toast('Review submitted — thank you!'); productView(pid);
+}
+
+/* ---------- cart / checkout ---------- */
+function cartTotals(){
+  let sub = 0;
+  const items = S.cart.map(ci => { const p = PROD(ci.id); if (!p) return null; const lt = effPrice(p) * ci.qty; sub += lt; return {ci, p, lt}; }).filter(Boolean);
+  const coupon = gdLoad('gd_active_coupon', null);
+  let disc = 0;
+  if (coupon) { const cp = (gdLoad('gd_coupons', null) || [{code:'WELCOME10',type:'pct',val:10,active:true}]).find(c => c.code === coupon && c.active); if (cp) disc = cp.type === 'pct' ? sub * cp.val/100 : Math.min(cp.val, sub); }
+  const ship = items.length ? gdShipping(S.country, sub - disc) : 0;
+  return {items, sub, disc, ship, total: sub - disc + ship, coupon};
+}
+function cartView(){
+  const t = cartTotals();
+  $('#app').innerHTML = `<div class="sec"><h2>🛒 Your Cart</h2></div>
+  ${!t.items.length ? '<div class="empty"><div class="ic">🛒</div>Your cart is empty.<br><br><a class="btn gold" href="#/shop">Continue Shopping</a></div>' : `
+  <div class="layout" style="grid-template-columns:1fr 360px">
+    <div>${t.items.map(({ci,p,lt}) => `<div class="cartrow">
+      ${imgTag(p)}<div><a href="#/product/${p.id}"><b>${esc(p.name)}</b></a>
+      <div style="font-size:12.5px;color:var(--mut)">${ci.color?('Color: '+esc(ci.color)+' · '):''}${ci.size?('Size: '+esc(ci.size)+' · '):''}${money(effPrice(p))} each</div>
+      <div style="margin-top:7px;display:flex;gap:10px;align-items:center"><span class="qty"><button onclick="cartQty('${p.id}','${esc(ci.color)}','${esc(ci.size)}',-1)">−</button><input value="${ci.qty}" readonly><button onclick="cartQty('${p.id}','${esc(ci.color)}','${esc(ci.size)}',1)">+</button></span>
+      <a href="#" onclick="cartRemove('${p.id}','${esc(ci.color)}','${esc(ci.size)}');return false" style="color:var(--red);font-size:13px;font-weight:600">Remove</a></div></div>
+      <b>${money(lt)}</b></div>`).join('')}</div>
+    <div class="sumbox"><h3 style="margin-bottom:10px">Order Summary</h3>
+      <div class="fld" style="display:flex;gap:8px"><input id="couponIn" placeholder="Coupon code (try WELCOME10)" value="${t.coupon||''}"><button class="btn ghost sm" onclick="applyCoupon()">Apply</button></div>
+      <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
+      ${t.disc?`<div class="line"><span>Coupon discount</span><b style="color:var(--green)">−${money(t.disc)}</b></div>`:''}
+      <div class="line"><span>Delivery within ${esc(gdCountry(S.country).name)}</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
+      <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
+      <small style="color:var(--mut)">Shown in ${esc(S.cur)}. Final charged currency depends on payment method.</small>
+      <a class="btn gold" style="display:block;text-align:center;margin-top:14px" href="#/checkout">Proceed to Checkout →</a>
+      <a class="btn ghost" style="display:block;text-align:center;margin-top:9px" href="#/shop">Continue shopping</a>
+    </div></div>`}`;
+  window.scrollTo(0,0);
+}
+function cartQty(id, color, size, d){
+  const it = S.cart.find(i => i.id===id && i.color===color && i.size===size); if (!it) return;
+  const p = PROD(id); it.qty = Math.max(1, Math.min(it.qty + d, p ? p.stock : 99));
+  gdSave('gd_cart', S.cart); paintChrome(); cartView();
+}
+function cartRemove(id, color, size){ S.cart = S.cart.filter(i => !(i.id===id && i.color===color && i.size===size)); gdSave('gd_cart', S.cart); paintChrome(); cartView(); }
+function applyCoupon(){
+  const code = $('#couponIn').value.trim().toUpperCase();
+  const cps = gdLoad('gd_coupons', null) || [{code:'WELCOME10',type:'pct',val:10,active:true}];
+  const cp = cps.find(c => c.code === code && c.active);
+  if (cp) { gdSave('gd_active_coupon', code); toast('Coupon applied: ' + code); } else { gdSave('gd_active_coupon', null); toast('Coupon not valid'); }
+  cartView();
+}
+let payMethod = 'cod';
+function checkoutView(){
+  const t = cartTotals();
+  if (!t.items.length) { location.hash = '#/cart'; return; }
+  const c = gdCountry(S.country);
+  const codOk = S.country === 'PK';
+  if (!codOk && payMethod === 'cod') payMethod = 'card';
+  $('#app').innerHTML = `<div class="sec"><h2>Secure Checkout</h2></div>
+  <div class="layout" style="grid-template-columns:1fr 360px">
+   <div>
+    <div class="pagebox" style="margin:0 0 14px"><h3 style="margin-top:0">1 · Shipping details</h3>
+      <div class="f2"><div class="fld"><label>Full name *</label><input id="coName" value=""></div>
+      <div class="fld"><label>Phone (with country code) *</label><input id="coPhone" placeholder="+92…"></div></div>
+      <div class="fld"><label>Email *</label><input id="coEmail" type="email" value=""></div>
+      <div class="fld"><label>Street address *</label><input id="coAddr" placeholder="House, street, area"></div>
+      <div class="f2"><div class="fld"><label>City *</label><input id="coCity"></div>
+      <div class="fld"><label>Postal code</label><input id="coZip"></div></div>
+      <div class="fld"><label>Shipping country</label><input value="${esc(c.name)}" disabled><small style="color:var(--mut)">To ship to another country, change it from the 🌍 selector at the top — product availability and prices will update.</small></div>
+    </div>
+    <div class="pagebox" style="margin:0"><h3 style="margin-top:0">2 · Payment method</h3>
+      <label class="payopt ${payMethod==='cod'?'on':''} ${codOk?'':'dis'}"><input type="radio" name="pay" ${payMethod==='cod'?'checked':''} ${codOk?'':'disabled'} onchange="payMethod='cod';checkoutView()"><span><b>Cash on Delivery (COD)</b><small>${codOk?'Pay in PKR when your order arrives. Available in Pakistan only.':'Not available for '+esc(c.name)+' — COD works only inside Pakistan.'}</small></span></label>
+      <label class="payopt dis"><input type="radio" name="pay" disabled><span><b>Card payment (Visa / Mastercard)</b><small>Being set up — card checkout will be activated once the payment provider account is connected.</small></span></label>
+      <label class="payopt dis"><input type="radio" name="pay" disabled><span><b>PayPal</b><small>Being set up — will be enabled for supported countries after provider approval.</small></span></label>
+      <button class="btn gold" style="width:100%;padding:14px;font-size:15px" onclick="placeOrder()">Place Order — ${money(t.total)}</button>
+      <p style="font-size:12.5px;color:var(--mut);margin-top:9px;text-align:center">By placing this order you agree to our <a href="#/page/terms" style="font-weight:600">Terms</a> and <a href="#/page/returns" style="font-weight:600">Returns policy</a>. You will only be charged the amount shown — no hidden fees.</p>
+    </div>
+   </div>
+   <div class="sumbox"><h3 style="margin-bottom:10px">Your Order</h3>
+     ${t.items.map(({ci,p,lt})=>`<div class="line"><span>${esc(p.name)} × ${ci.qty}</span><b>${money(lt)}</b></div>`).join('')}
+     <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
+     ${t.disc?`<div class="line"><span>Discount</span><b style="color:var(--green)">−${money(t.disc)}</b></div>`:''}
+     <div class="line"><span>Shipping</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
+     <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
+     <div style="font-size:12.5px;color:var(--mut);margin-top:8px">🚚 Estimated delivery: ${t.items.map(({p})=>gdDeliveryDays(p,S.country)).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
+   </div></div>`;
+  window.scrollTo(0,0);
+}
+function placeOrder(){
+  const g = id => $(id).value.trim();
+  const name = g('#coName'), phone = g('#coPhone'), email = g('#coEmail'), addr = g('#coAddr'), city = g('#coCity');
+  if (!name || !phone || !email || !addr || !city) { toast('Please fill all required fields (*)'); return; }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Please enter a valid email'); return; }
+  const t = cartTotals();
+  for (const {ci,p} of t.items) { if (ci.qty > p.stock) { toast('Not enough stock for ' + p.name); return; } }
+  const orders = gdLoad('gd_orders', []);
+  const order = {
+    id: gdUid('GD'), at: Date.now(), email, name, phone, addr, city, zip: g('#coZip'), country: S.country,
+    items: t.items.map(({ci,p,lt}) => ({id:p.id, name:p.name, img:p.img, qty:ci.qty, color:ci.color, size:ci.size, price:effPrice(p), lt, supplier:p.supplier, sku:p.sku})),
+    sub: t.sub, disc: t.disc, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
+  };
+  orders.unshift(order); gdSave('gd_orders', orders);
+  /* decrement stock in the live product list */
+  const prods = gdProducts();
+  t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) p.stock = Math.max(0, p.stock - ci.qty); });
+  gdSave('gd_products', prods);
+  S.cart = []; gdSave('gd_cart', []); gdSave('gd_active_coupon', null); paintChrome();
+  location.hash = '#/confirm/' + order.id;
+}
+function confirmView(id){
+  const o = gdLoad('gd_orders', []).find(x => x.id === id);
+  if (!o) { $('#app').innerHTML = '<div class="empty" style="margin-top:26px">Order not found.</div>'; return; }
+  $('#app').innerHTML = `<div class="empty" style="margin-top:26px;border-style:solid;border-color:#a6f4c5;background:#f0fdf4">
+    <div class="ic">✅</div><h2 style="color:var(--green)">Order placed — thank you, ${esc(o.name.split(' ')[0])}!</h2>
+    <p style="margin-top:8px">Your order number is <b>${esc(o.id)}</b>.<br>Total: <b>${gdFmt(o.total, o.cur, S.rates)}</b> · Payment: <b>${o.payment==='cod'?'Cash on Delivery':'Card'}</b><br>
+    ${o.payment==='cod'?'Please keep the amount ready — our rider/supplier will collect it on delivery.':'Our team will contact you on WhatsApp ('+esc(o.phone)+') to confirm and arrange delivery.'}<br>
+    Track it anytime on the <a href="#/track" style="font-weight:700;color:var(--navy)">Track Order</a> page with your order number and email.</p>
+    <br><a class="btn gold" href="#/shop">Continue Shopping</a></div>`;
+  window.scrollTo(0,0);
+}
+function trackView(){
+  $('#app').innerHTML = `<div class="sec"><h2>📦 Track Your Order</h2></div>
+  <div class="pagebox" style="max-width:560px;margin:20px auto"><div class="fld"><label>Order number</label><input id="trId" placeholder="e.g. GDXXXXXX"></div>
+  <div class="fld"><label>Email used at checkout</label><input id="trEmail" type="email"></div>
+  <button class="btn gold" style="width:100%" onclick="doTrack()">Track</button><div id="trOut" style="margin-top:16px"></div></div>`;
+}
+function doTrack(){
+  const id = $('#trId').value.trim().toUpperCase(), em = $('#trEmail').value.trim().toLowerCase();
+  const o = gdLoad('gd_orders', []).find(x => x.id.toUpperCase() === id && x.email.toLowerCase() === em);
+  $('#trOut').innerHTML = o ? `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : '<p style="color:var(--red);font-weight:600">Order not found — check the number and email.</p>';
+}
+function wishlistView(){
+  const list = S.wish.map(PROD).filter(Boolean);
+  $('#app').innerHTML = `<div class="sec"><h2>❤️ My Wishlist</h2></div>
+  ${list.length ? `<div class="pgrid">${list.map(cardHTML).join('')}</div>` : '<div class="empty"><div class="ic">❤️</div>Nothing saved yet. Tap the heart on any product to save it here.</div>'}`;
+  window.scrollTo(0,0);
+}
+
+/* ---------- policy / info pages ---------- */
+const PAGES = {
+  about:{t:'About Us', b:`<p><b>GlobalDrop</b> is an international dropshipping marketplace. We connect customers in dozens of countries with verified suppliers — global suppliers through <b>CJ Dropshipping</b> and local sellers inside Pakistan — so you only ever see products that can actually be delivered to your door, priced in your own currency.</p><h3>How it works</h3><ul><li>You order on GlobalDrop.</li><li>The supplier prepares and ships your order directly to you.</li><li>You track it here, and our buyer protection covers you if anything goes wrong.</li></ul><h3>Our suppliers</h3><p>Products are sourced from CJ Dropshipping's global warehouses and selected Pakistani suppliers, and shipped directly to your door — we never hold stock, which keeps prices low.</p>`},
+  contact:{t:'Contact Us', b:`<p>We reply on WhatsApp and email — usually within a few hours.</p><ul><li><b>WhatsApp:</b> 0335-2710980</li><li><b>Email:</b> support@globaldrop.example</li><li><b>Hours:</b> Mon–Sat, 9am–9pm (PKT)</li></ul><p>For order questions, please include your order number (it starts with GD).</p>`},
+  faq:{t:'Frequently Asked Questions', b:`<h3>Why do I only see some products?</h3><p>Our catalog is country-aware: you only see products that can be delivered to your selected shipping country. Change the country from the 🌍 selector at the top to see a different catalog.</p><h3>Why is my price in a different currency?</h3><p>Prices are converted from USD using daily exchange rates. The currency actually charged depends on your payment method — Cash on Delivery is always in local currency.</p><h3>How long does delivery take?</h3><p>Every product page shows an estimate for your country. Products listed for Pakistan arrive in 2–4 working days. Products listed for other countries are delivered within that country, usually in 5–9 working days.</p><h3>Can I pay cash on delivery?</h3><p>Yes — inside Pakistan. For other countries, card/PayPal checkout is being activated with our payment providers.</p><h3>How do returns work?</h3><p>See our <a href="#/page/returns">Returns &amp; Refunds</a> page.</p>`},
+  shipping:{t:'Shipping & Delivery Policy', b:`<p><i>Draft policy — to be finalized with the store's actual courier arrangements before public launch.</i></p><h3>Delivery areas & times</h3><ul><li><b>Pakistan:</b> 2–4 working days.</li><li><b>Other countries:</b> usually 5–9 working days. Every product is delivered within the country it is listed for — nothing is shipped from Pakistan to another country.</li></ul><h3>Shipping fees</h3><ul><li>Pakistan: free on orders over $30, otherwise $1.50.</li><li>Other countries: free on orders over $50, otherwise $4.99.</li></ul><h3>Tracking</h3><p>Every order gets a tracking number as soon as the supplier ships it. Track on the <a href="#/track">Track Order</a> page.</p><h3>Delays</h3><p>Customs or courier delays can occasionally extend delivery times. If an order does not arrive within 30 days, buyer protection gives you a full refund.</p>`},
+  returns:{t:'Returns & Refund Policy', b:`<p><i>Draft policy — to be finalized before public launch.</i></p><h3>When you can return</h3><ul><li>Item arrived damaged, defective or different from the description.</li><li>Item never arrived within 30 days — full refund, no return needed.</li></ul><h3>How</h3><p>Contact us on WhatsApp or email within 7 days of delivery with your order number and a photo of the item. Approved refunds are issued to the original payment method (or Easypaisa/JazzCash for COD orders) within 5–7 working days after we receive the item or confirm the issue.</p><h3>Not returnable</h3><p>For hygiene reasons, opened personal-care items cannot be returned unless defective.</p>`},
+  privacy:{t:'Privacy Policy', b:`<p><i>Draft policy — requires legal review for each market before public launch.</i></p><p>We collect only the data needed to run the store: your name, contact details, delivery address and order history. We use it to process orders, arrange delivery, provide support and — only with your consent — send offers.</p><h3>Sharing</h3><p>Your delivery details are shared with the supplier and courier handling your order, and with payment providers when you pay online. We never sell your personal data.</p><h3>Your rights</h3><p>You can ask for a copy of your data or its deletion at any time via the Contact page. Data deletion requests are processed within 7 working days.</p><h3>Cookies</h3><p>See the Cookie Policy page.</p>`},
+  terms:{t:'Terms & Conditions', b:`<p><i>Draft terms — requires legal review before public launch.</i></p><ul><li>Prices are displayed in your selected currency as estimates converted from USD; the amount charged depends on the payment method and is always shown before you confirm.</li><li>An order is confirmed when you receive an order number. We may cancel and refund orders for out-of-stock items or pricing errors.</li><li>Product images and descriptions come from suppliers; minor color/size variations can occur.</li><li>Products are supplied by CJ Dropshipping and Pakistani partner suppliers; GlobalDrop handles your order, payment and buyer protection.</li></ul>`},
+  cookies:{t:'Cookie Policy', b:`<p>We use browser storage for essentials: your cart, wishlist, selected country/currency and exchange-rate cache. Analytics or marketing cookies, if added later, will only run with your consent. You can clear this data anytime from your browser settings.</p>`},
+  payment:{t:'Payment Information', b:`<h3>Cash on Delivery (Pakistan)</h3><p>Pay in PKR when your order arrives. Available for deliveries inside Pakistan.</p><h3>Card & PayPal (international)</h3><p>Online card checkout is being activated with our payment providers. When live, payments are processed by the provider on their secure pages — GlobalDrop never sees or stores your card number.</p><h3>Currency</h3><p>Displayed prices are converted from USD using daily exchange rates and are estimates. The final charged currency and amount are always shown at checkout before you confirm.</p>`}
+};
+function pageView(slug){
+  const pg = PAGES[slug];
+  if (!pg) { location.hash = '#/'; return; }
+  $('#app').innerHTML = `<div class="pagebox"><h1>${pg.t}</h1>${pg.b}</div>`;
+  window.scrollTo(0,0);
+}
+
+/* ---------- newsletter ---------- */
+$('#newsBtn').onclick = () => {
+  const em = $('#newsEmail').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('#newsMsg').textContent = 'Please enter a valid email.'; return; }
+  const list = gdLoad('gd_newsletter', []); if (!list.includes(em)) list.push(em);
+  gdSave('gd_newsletter', list); $('#newsMsg').textContent = 'Subscribed — welcome to GlobalDrop!'; $('#newsEmail').value = '';
+};
+
+/* ---------- router & init ---------- */
+function route(){
+  const h = location.hash || '#/';
+  const [path, qs] = h.slice(1).split('?');
+  const params = new URLSearchParams(qs || '');
+  const parts = path.split('/').filter(Boolean);
+  paintChrome();
+  if (parts.length === 0) return homeView();
+  if (parts[0] === 'shop') return shopView(params);
+  if (parts[0] === 'search') { params.set('q', params.get('q') || ''); return shopView(params); }
+  if (parts[0] === 'cat' && parts[1]) return categoryView(parts[1], params);
+  if (parts[0] === 'product' && parts[1]) return productView(parts[1]);
+  if (parts[0] === 'cart') return cartView();
+  if (parts[0] === 'checkout') return checkoutView();
+  if (parts[0] === 'confirm' && parts[1]) return confirmView(parts[1]);
+  if (parts[0] === 'track') return trackView();
+  if (parts[0] === 'wishlist') return wishlistView();
+  if (parts[0] === 'page' && parts[1]) return pageView(parts[1]);
+  homeView();
+}
+window.addEventListener('hashchange', route);
+(async function init(){
+  if (!S.country) {
+    try {
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
+      const r = await fetch('https://ipapi.co/json/', {signal: ctl.signal}); clearTimeout(to);
+      const j = await r.json();
+      S.country = (j && GD_COUNTRIES.some(c => c.code === j.country_code)) ? j.country_code : 'US';
+    } catch(e){ S.country = 'US'; }
+    gdSave('gd_country', S.country);
+  }
+  S.cur = gdCountry(S.country).cur;
+  /* Render immediately with cached/fallback rates — never wait on the network,
+     then refresh prices in place when live rates arrive. */
+  S.rates = (gdRatesCache && gdRatesCache.rates) || GD_FALLBACK_RATES;
+  route();
+  gdFetchRates().then(r => { if (r && r !== S.rates) { S.rates = r; paintChrome(); route(); } });
+})();
+</script></script>
+</body>
+</html>

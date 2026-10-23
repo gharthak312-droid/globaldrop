@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GlobalDrop — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0e1526;--gold:#c9a227;--line:#e5e8ee;--mut:#5b6474;--red:#d92d20;--green:#067647}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#f2f3f6;color:var(--ink)}
+h1,h2,h3{font-family:'Sora'}
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px}
+header{background:var(--ink);color:#fff;padding:14px 0}
+header .wrap{display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:'Sora';font-weight:800;font-size:20px}.logo span{color:var(--gold)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 14px}
+.tab{border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:9px 15px;font-weight:600;font-size:13.5px;cursor:pointer}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}
+.stat b{font-size:24px;display:block;font-family:'Sora'}
+.stat small{color:var(--mut);font-size:12.5px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+.fld{margin-bottom:11px}.fld label{font-size:12.5px;font-weight:600;display:block;margin-bottom:4px}
+.fld input,.fld select,.fld textarea{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;background:#fff}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:11px}.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.btn{background:var(--ink);color:#fff;border:none;font-weight:700;padding:9px 15px;border-radius:10px;font-size:13.5px;cursor:pointer}
+.btn.gold{background:var(--gold);color:#161106}.btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:12.5px}.btn.red{background:var(--red)}
+.pill{display:inline-block;background:#eef1f5;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;color:var(--mut)}
+.pill.g{background:#e6f4ea;color:#137333}.pill.r{background:#fdecea;color:#b42318}.pill.y{background:#fef3c7;color:#92400e}
+.gate{max-width:380px;margin:9vh auto;background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;text-align:center}
+.hidden{display:none!important}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:11px;font-size:13.5px;font-weight:600;display:none;z-index:50}
+img.th{width:44px;height:44px;border-radius:8px;object-fit:cover}
+small.hint{color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="logo">Global<span>Drop</span> <small style="font-family:Inter;font-weight:500;font-size:12px;color:#9aa5bb">ADMIN</small></div>
+<a href="index.html" style="color:#fff;font-size:13.5px;font-weight:600">← View Store</a></div></header>
+
+<div class="gate" id="gate">
+  <div style="font-size:34px">🔐</div>
+  <h2 style="margin:8px 0 4px">Admin Login</h2>
+  <p style="color:var(--mut);font-size:13px;margin-bottom:14px">Enter the admin PIN to continue. (Default: 1234 — change it in Settings.)<br><small>Demo protection only — production will use Supabase Auth.</small></p>
+  <div class="fld"><input id="pinIn" type="password" placeholder="PIN" style="text-align:center;font-size:17px;letter-spacing:4px"></div>
+  <button class="btn gold" style="width:100%" onclick="tryPin()">Unlock</button>
+</div>
+
+<main class="wrap hidden" id="panel">
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+</main>
+<div id="toast"></div>
+
+<script src="store-data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2300); }
+const pin = () => gdLoad('gd_admin_pin','1234');
+function tryPin(){ if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
+$('#pinIn').addEventListener('keydown', e => { if (e.key==='Enter') tryPin(); });
+
+const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['coupons','🎟️ Coupons'],['settings','⚙️ Settings']];
+let curTab = 'overview';
+function show(tab){
+  curTab = tab;
+  $('#tabs').innerHTML = TABS.map(([k,l]) => `<button class="tab ${k===tab?'on':''}" onclick="show('${k}')">${l}</button>`).join('');
+  ({overview:vOverview, products:vProducts, orders:vOrders, coupons:vCoupons, settings:vSettings})[tab]();
+}
+const orders = () => gdLoad('gd_orders', []);
+const fmtUSD = n => '$' + Number(n||0).toFixed(2);
+
+function vOverview(){
+  const os = orders(), prods = gdProducts();
+  const rev = os.filter(o=>o.status!=='Cancelled'&&o.status!=='Refunded').reduce((a,o)=>a+o.total,0);
+  const byCountry = {};
+  os.forEach(o => { byCountry[o.country] = (byCountry[o.country]||0) + o.total; });
+  $('#view').innerHTML = `
+  <div class="grid">
+    <div class="stat"><b>${fmtUSD(rev)}</b><small>Total revenue (USD, excl. cancelled/refunded)</small></div>
+    <div class="stat"><b>${os.length}</b><small>Total orders</small></div>
+    <div class="stat"><b>${os.filter(o=>o.status==='Placed').length}</b><small>Orders awaiting action</small></div>
+    <div class="stat"><b>${prods.length}</b><small>Products in catalog</small></div>
+    <div class="stat"><b>${gdLoad('gd_reviews',[]).length}</b><small>Customer reviews</small></div>
+    <div class="stat"><b>${gdLoad('gd_newsletter',[]).length}</b><small>Newsletter subscribers</small></div>
+    <div class="stat"><b>${os.length?fmtUSD(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled').length)):'$0.00'}</b><small>Average order value</small></div>
+    <div class="stat"><b>${prods.filter(p=>p.stock<=0).length}</b><small>Out-of-stock products</small></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3>Sales by country</h3>
+  ${Object.keys(byCountry).length ? Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc((gdCountry(c)||{}).name||c)}</span><b>${fmtUSD(v)}</b></div>`).join('') : '<p class="hint">No orders yet.</p>'}</div>
+  <div class="card"><h3>Recent orders</h3>${os.length ? orderTable(os.slice(0,6), false) : '<p class="hint">No orders yet — orders placed on the store will appear here.</p>'}</div>`;
+}
+function orderTable(os, full){
+  return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (USD)</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
+  ${os.map(o => `<tr><td><b>${esc(o.id)}</b></td><td>${new Date(o.at).toLocaleDateString('en-GB')}</td>
+  <td>${esc(o.name)}<br><small class="hint">${esc(o.email)}</small></td><td>${esc(o.country)}</td>
+  <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtUSD(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
+  <td>${full ? `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'?'r':'y'}">${esc(o.status)}</span>`}</td>
+  ${full?`<td><input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no."></td>
+  <td><button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button></td>`:''}</tr>`).join('')}</table></div>`;
+}
+function vOrders(){
+  const os = orders();
+  $('#view').innerHTML = `<div class="card"><h3>All Orders (${os.length})</h3><p class="hint" style="margin:5px 0 10px">Update status and add tracking numbers — customers see both on the Track Order page. Supplier fulfillment: CJ items carry their CJ SKU; PK items go to the local supplier.</p>${os.length?orderTable(os,true):'<p class="hint">No orders yet.</p>'}</div>`;
+}
+function setStatus(id, st){ const os = orders(); const o = os.find(x=>x.id===id); if (o){ o.status = st; gdSave('gd_orders', os); toast('Order '+id+' → '+st); } }
+function saveTracking(id){ const os = orders(); const o = os.find(x=>x.id===id); if (o){ o.tracking = $('#trk-'+CSS.escape(id)).value.trim(); gdSave('gd_orders', os); toast('Tracking saved for '+id); } }
+
+/* ---------- products ---------- */
+let editId = null;
+function vProducts(){
+  const prods = gdProducts(), cats = gdCategories();
+  $('#view').innerHTML = `
+  <div class="card"><h3>${editId?'Edit Product':'Add Product'}</h3>
+   <div class="f3">
+    <div class="fld"><label>Product name *</label><input id="pf-name"></div>
+    <div class="fld"><label>Category</label><select id="pf-cat">${cats.map(c=>`<option value="${c.slug}">${esc(c.name)}</option>`).join('')}</select></div>
+    <div class="fld"><label>Subcategory</label><input id="pf-sub" placeholder="e.g. Headphones and Earbuds"></div>
+   </div>
+   <div class="f3">
+    <div class="fld"><label>Price (USD) *</label><input id="pf-price" type="number" step="0.01"></div>
+    <div class="fld"><label>Sale price (USD)</label><input id="pf-sale" type="number" step="0.01"></div>
+    <div class="fld"><label>Stock</label><input id="pf-stock" type="number" value="50"></div>
+   </div>
+   <div class="f2">
+    <div class="fld"><label>Image URL</label><input id="pf-img" placeholder="https://…"></div>
+    <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><select id="pf-sup" style="width:130px"><option value="CJ">CJ</option><option value="PK">PK Local</option><option value="SELLER">Seller</option></select><input id="pf-sku" placeholder="Supplier SKU"></div></div>
+   </div>
+   <div class="f2">
+    <div class="fld"><label>Available countries</label><input id="pf-countries" placeholder="ALL — or codes like PK,US,GB"><small class="hint">ALL = every country in the store selector.</small></div>
+    <div class="fld"><label>Colors / Sizes (comma separated)</label><input id="pf-variants" placeholder="Black,White | S,M,L"></div>
+   </div>
+   <div class="fld"><label>Description</label><textarea id="pf-desc" rows="2"></textarea></div>
+   <label style="font-size:13px;margin-right:14px"><input type="checkbox" id="pf-feat"> Featured</label>
+   <label style="font-size:13px"><input type="checkbox" id="pf-new"> New arrival</label>
+   <div style="margin-top:12px;display:flex;gap:8px"><button class="btn gold" onclick="saveProduct()">${editId?'Save changes':'Add product'}</button>
+   ${editId?'<button class="btn ghost" onclick="editId=null;vProducts()">Cancel edit</button>':''}</div>
+  </div>
+  <div class="card"><h3>Import products (CSV)</h3>
+   <p class="hint" style="margin:5px 0 8px">One product per line: <b>name, category-slug, subcategory, price, sale, image-url, supplier, sku, countries, stock</b> (use ALL for countries). Lines starting with # are skipped.</p>
+   <textarea id="csvIn" rows="4" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px" placeholder="Example Product, electronics, Smartwatches, 39.99, 29.99, https://…, CJ, CJ-XX-1, ALL, 100"></textarea>
+   <button class="btn" style="margin-top:9px" onclick="importCSV()">Import CSV</button></div>
+  <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
+   ${prods.map(p=>`<tr><td><img class="th" src="${esc(p.img)}" onerror="this.style.visibility='hidden'"></td>
+   <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}</td>
+   <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(p.supplier)}</td>
+   <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>
+   <td style="white-space:nowrap"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button> <button class="btn sm red" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}
+   </table></div>
+   <button class="btn ghost sm" style="margin-top:12px" onclick="if(confirm('Reset catalog to the built-in demo products? Your edits will be lost.')){localStorage.removeItem('gd_products');vProducts();toast('Catalog reset')}">Reset to demo catalog</button></div>`;
+  if (editId) fillForm(editId);
+}
+function fillForm(id){
+  const p = gdProducts().find(x=>x.id===id); if (!p) return;
+  $('#pf-name').value=p.name; $('#pf-cat').value=p.cat; $('#pf-sub').value=p.sub||''; $('#pf-price').value=p.price;
+  $('#pf-sale').value=p.sale||''; $('#pf-stock').value=p.stock; $('#pf-img').value=p.img||''; $('#pf-sup').value=p.supplier||'CJ';
+  $('#pf-sku').value=p.sku||''; $('#pf-countries').value = p.countries==='ALL'?'ALL':(p.countries||[]).join(',');
+  $('#pf-variants').value = ((p.colors||[]).join(',')||'') + ((p.sizes&&p.sizes.length)?' | '+p.sizes.join(','):'');
+  $('#pf-desc').value=p.desc||''; $('#pf-feat').checked=!!p.featured; $('#pf-new').checked=!!p.isNew;
+  window.scrollTo(0,0);
+}
+function editProduct(id){ editId = id; vProducts(); }
+function saveProduct(){
+  const name = $('#pf-name').value.trim(), price = parseFloat($('#pf-price').value);
+  if (!name || isNaN(price)) { toast('Name and price are required'); return; }
+  const vparts = $('#pf-variants').value.split('|');
+  const cRaw = $('#pf-countries').value.trim();
+  const data = {
+    name, cat: $('#pf-cat').value, sub: $('#pf-sub').value.trim() || 'General',
+    price, sale: parseFloat($('#pf-sale').value) || null, stock: parseInt($('#pf-stock').value) || 0,
+    img: $('#pf-img').value.trim() || 'https://picsum.photos/seed/'+Date.now()+'/800/800',
+    supplier: $('#pf-sup').value, sku: $('#pf-sku').value.trim(),
+    countries: (!cRaw || cRaw.toUpperCase()==='ALL') ? 'ALL' : cRaw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean),
+    colors: (vparts[0]||'').split(',').map(s=>s.trim()).filter(Boolean),
+    sizes: (vparts[1]||'').split(',').map(s=>s.trim()).filter(Boolean),
+    desc: $('#pf-desc').value.trim(), featured: $('#pf-feat').checked, isNew: $('#pf-new').checked,
+    days: [7,12], specs: {}
+  };
+  const prods = gdProducts();
+  if (editId) { const p = prods.find(x=>x.id===editId); Object.assign(p, data); toast('Product updated'); }
+  else { prods.unshift(Object.assign({id: 'p' + Date.now().toString(36)}, data)); toast('Product added'); }
+  gdSave('gd_products', prods); editId = null; vProducts();
+}
+function delProduct(id){ if (!confirm('Delete this product?')) return; gdSave('gd_products', gdProducts().filter(p=>p.id!==id)); vProducts(); toast('Product deleted'); }
+function importCSV(){
+  const lines = $('#csvIn').value.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('#'));
+  let n = 0; const prods = gdProducts();
+  for (const ln of lines) {
+    const f = ln.split(',').map(s=>s.trim());
+    if (f.length < 10 || isNaN(parseFloat(f[3]))) continue;
+    prods.unshift({id:'p'+Date.now().toString(36)+n, name:f[0], cat:f[1], sub:f[2], price:parseFloat(f[3]), sale:parseFloat(f[4])||null, img:f[5], supplier:f[6]||'CJ', sku:f[7], countries: f[8].toUpperCase()==='ALL'?'ALL':f[8].split('|').map(s=>s.trim()), stock:parseInt(f[9])||50, colors:[], sizes:[], desc:'', specs:{}, days:[7,12], featured:false, isNew:true});
+    n++;
+  }
+  if (n) { gdSave('gd_products', prods); toast(n + ' products imported'); vProducts(); } else toast('No valid lines found');
+}
+
+/* ---------- coupons ---------- */
+function vCoupons(){
+  const cps = gdLoad('gd_coupons', null) || [{code:'WELCOME10', type:'pct', val:10, active:true}];
+  $('#view').innerHTML = `<div class="card"><h3>Add Coupon</h3>
+   <div class="f3"><div class="fld"><label>Code</label><input id="cp-code" placeholder="e.g. SALE20"></div>
+   <div class="fld"><label>Type</label><select id="cp-type"><option value="pct">Percent %</option><option value="fixed">Fixed USD</option></select></div>
+   <div class="fld"><label>Value</label><input id="cp-val" type="number" step="0.01"></div></div>
+   <button class="btn gold" onclick="addCoupon()">Add coupon</button></div>
+  <div class="card"><h3>Coupons</h3><table><tr><th>Code</th><th>Discount</th><th>Active</th><th></th></tr>
+  ${cps.map((c,i)=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.type==='pct'?c.val+'%':fmtUSD(c.val)}</td>
+   <td><span class="pill ${c.active?'g':'r'}">${c.active?'Active':'Off'}</span></td>
+   <td><button class="btn sm ghost" onclick="toggleCoupon(${i})">${c.active?'Disable':'Enable'}</button> <button class="btn sm red" onclick="delCoupon(${i})">Delete</button></td></tr>`).join('')}</table></div>`;
+}
+const getCoupons = () => gdLoad('gd_coupons', null) || [{code:'WELCOME10', type:'pct', val:10, active:true}];
+function addCoupon(){
+  const code = $('#cp-code').value.trim().toUpperCase(), val = parseFloat($('#cp-val').value);
+  if (!code || isNaN(val)) { toast('Code and value required'); return; }
+  const cps = getCoupons(); cps.push({code, type: $('#cp-type').value, val, active: true});
+  gdSave('gd_coupons', cps); vCoupons(); toast('Coupon added');
+}
+function toggleCoupon(i){ const cps = getCoupons(); cps[i].active = !cps[i].active; gdSave('gd_coupons', cps); vCoupons(); }
+function delCoupon(i){ const cps = getCoupons(); cps.splice(i,1); gdSave('gd_coupons', cps); vCoupons(); }
+
+/* ---------- settings ---------- */
+function vSettings(){
+  const st = gdSettings();
+  $('#view').innerHTML = `<div class="card"><h3>Store Settings</h3>
+  <div class="f2"><div class="fld"><label>Store name</label><input id="st-name" value="${esc(st.name)}"></div>
+  <div class="fld"><label>Tagline</label><input id="st-tag" value="${esc(st.tagline||'')}"></div></div>
+  <div class="fld"><label>Announcement bar text</label><input id="st-ann" value="${esc(st.announcement)}"></div>
+  <div class="f2"><div class="fld"><label>Support email</label><input id="st-email" value="${esc(st.supportEmail)}"></div>
+  <div class="fld"><label>Support WhatsApp</label><input id="st-wa" value="${esc(st.whatsapp)}"></div></div>
+  <button class="btn gold" onclick="saveSettings()">Save settings</button></div>
+  <div class="card"><h3>Integrations — status</h3>
+  <table><tr><th>Service</th><th>Status</th><th>What is needed</th></tr>
+  <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account — save the API key in the CJ card under Settings. Then product import, order push and tracking sync can be switched on.</td></tr>
+  <tr><td>Supabase (database + auth)</td><td><span class="pill y">Local demo mode</span></td><td>Create a Supabase project in a new Free organization, then data moves from this browser to the cloud DB.</td></tr>
+  <tr><td>Card payments</td><td><span class="pill y">Not connected</span></td><td>Payment provider account eligible for the business country (e.g. Whop/Stripe/PayPal where supported).</td></tr>
+  <tr><td>Exchange rates</td><td><span class="pill g">Live</span></td><td>open.er-api.com free rates, cached 12 hours, static fallback included.</td></tr></table></div>
+  <div class="card"><h3>CJ Dropshipping — Your Supplier Account</h3>
+  <p style="color:var(--mut);font-size:13px;margin:5px 0 10px">Ye tumhara apna CJ account hai — GlobalDrop ke saray CJ products aur orders isi se jurenge. API key CJ dashboard se milti hai.</p>
+  <div class="f2"><div class="fld"><label>CJ account email</label><input id="st-cjemail" value="${esc(st.cjEmail||'')}"></div>
+  <div class="fld"><label>CJ API key</label><input id="st-cjkey" value="${esc(st.cjKey||'')}"></div></div>
+  <button class="btn gold" onclick="saveCj()">Save CJ connection</button> <span class="pill ${st.cjKey?'g':'y'}">${st.cjKey?'Key saved':'Not connected'}</span></div>
+  <div class="card"><h3>Change Admin PIN</h3>
+  <div class="fld" style="max-width:260px"><label>New PIN</label><input id="st-pin" type="password" placeholder="New PIN"></div>
+  <button class="btn" onclick="if($('#st-pin').value.length>=4){gdSave('gd_admin_pin',$('#st-pin').value);toast('PIN changed')}else toast('PIN must be 4+ characters')">Change PIN</button></div>`;
+}
+function saveSettings(){
+  const cur = gdSettings();
+  gdSave('gd_settings', {name: $('#st-name').value.trim() || 'GlobalDrop', tagline: $('#st-tag').value, announcement: $('#st-ann').value, commissionPct: cur.commissionPct, supportEmail: $('#st-email').value, whatsapp: $('#st-wa').value, cjEmail: cur.cjEmail || '', cjKey: cur.cjKey || ''});
+  toast('Settings saved');
+}
+function saveCj(){
+  const cur = gdSettings();
+  gdSave('gd_settings', Object.assign({}, cur, {cjEmail: $('#st-cjemail').value.trim(), cjKey: $('#st-cjkey').value.trim()}));
+  toast('CJ connection saved'); vSettings();
+}
+</script>
+</body>
+</html>
