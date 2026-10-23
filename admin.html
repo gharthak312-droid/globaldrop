@@ -244,7 +244,7 @@ function vSettings(){
   <button class="btn gold" onclick="saveSettings()">Save settings</button></div>
   <div class="card"><h3>Integrations — status</h3>
   <table><tr><th>Service</th><th>Status</th><th>What is needed</th></tr>
-  <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account — save the API key in the CJ card under Settings. Then product import, order push and tracking sync can be switched on.</td></tr>
+  <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account. Product import + stock sync are LIVE in the CJ card under Settings. Order push comes next.</td></tr>
   <tr><td>Supabase (database)</td><td><span class="pill g">Connected</span></td><td>Project "globaldrop" — products, orders, reviews and store settings sync to the cloud DB; this browser keeps a local fallback copy.</td></tr>
   <tr><td>Card payments</td><td><span class="pill y">Not connected</span></td><td>Payment provider account eligible for the business country (e.g. Whop/Stripe where supported).</td></tr>
   <tr><td>Exchange rates</td><td><span class="pill g">Live</span></td><td>open.er-api.com free rates, cached 12 hours, static fallback included.</td></tr></table></div>
@@ -252,7 +252,24 @@ function vSettings(){
   <p style="color:var(--mut);font-size:13px;margin:5px 0 10px">Ye tumhara apna CJ account hai — GlobalDrop ke saray CJ products aur orders isi se jurenge. API key CJ dashboard se milti hai.</p>
   <div class="f2"><div class="fld"><label>CJ account email</label><input id="st-cjemail" value="${esc(st.cjEmail||'')}"></div>
   <div class="fld"><label>CJ API key</label><input id="st-cjkey" value="${esc(st.cjKey||'')}"></div></div>
-  <button class="btn gold" onclick="saveCj()">Save CJ connection</button> <span class="pill ${st.cjKey?'g':'y'}">${st.cjKey?'Key saved':'Not connected'}</span></div>
+  <button class="btn gold" onclick="saveCj()">Save CJ connection</button> <span class="pill ${st.cjKey?'g':'y'}">${st.cjKey?'Key saved':'Not connected'}</span>
+  <div style="border-top:1px solid var(--line);margin:16px 0"></div>
+  <h3 style="font-size:15px">Connection test</h3>
+  <p style="color:var(--mut);font-size:13px;margin:5px 0 9px">Checks that GlobalDrop can reach CJ through the sync function. The CJ key used by the function stays on the server — nothing is sent from this browser.</p>
+  <button class="btn ghost" id="cj-test-btn" onclick="cjTest()">Test CJ connection</button> <span id="cj-test-status" style="font-size:13px;font-weight:600"></span>
+  <div style="border-top:1px solid var(--line);margin:16px 0"></div>
+  <h3 style="font-size:15px">Import products from CJ</h3>
+  <p style="color:var(--mut);font-size:13px;margin:5px 0 10px">New CJ products from the selected warehouse country, with prices set by the automatic tiered markup. Existing products are never overwritten. Keyword is optional — leave it empty to import CJ's default list.</p>
+  <div class="f3">
+   <div class="fld"><label>Warehouse country</label><select id="cj-imp-country">${GD_COUNTRIES.map(c=>`<option value="${c.code}" ${c.code==='US'?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+   <div class="fld"><label>Keyword (optional)</label><input id="cj-imp-keyword" placeholder="kitchen gadget"></div>
+   <div class="fld"><label>How many</label><input id="cj-imp-size" type="number" value="20" min="1" max="100"></div>
+  </div>
+  <button class="btn gold" id="cj-import-btn" onclick="cjImport()">Import products</button> <span id="cj-import-status" style="font-size:13px;font-weight:600"></span>
+  <div style="border-top:1px solid var(--line);margin:16px 0"></div>
+  <h3 style="font-size:15px">Stock sync</h3>
+  <p style="color:var(--mut);font-size:13px;margin:5px 0 9px">Refreshes stock for all CJ products. Products CJ no longer lists get their stock set to zero (they are not deleted).</p>
+  <button class="btn ghost" id="cj-sync-btn" onclick="cjSync()">Sync CJ stock</button> <span id="cj-sync-status" style="font-size:13px;font-weight:600"></span></div>
   <div class="card"><h3>Change Admin PIN</h3>
   <div class="fld" style="max-width:260px"><label>New PIN</label><input id="st-pin" type="password" placeholder="New PIN"></div>
   <button class="btn" onclick="if($('#st-pin').value.length>=4){gdSave('gd_admin_pin',$('#st-pin').value);toast('PIN changed')}else toast('PIN must be 4+ characters')">Change PIN</button></div>`;
@@ -268,6 +285,72 @@ function saveCj(){
   const cur = gdSettings();
   gdSave('gd_settings', Object.assign({}, cur, {cjEmail: $('#st-cjemail').value.trim(), cjKey: $('#st-cjkey').value.trim()}));
   toast('CJ connection saved'); vSettings();
+}
+
+/* ---------- CJ Dropshipping — sync function calls ----------
+   The Edge Function (cj-sync, deployed as "smooth-handler") talks to CJ with
+   server-side secrets. cjEmail / cjKey are NEVER sent to it — the browser
+   only sends the action payload, authenticated with the public publishable
+   key (GD_SB_KEY from store-data.js). */
+const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
+async function gdCjCall(payload){
+  try {
+    const r = await fetch(GD_CJ_FN_URL, {method:'POST',
+      headers:{'Authorization':'Bearer ' + GD_SB_KEY, 'apikey': GD_SB_KEY, 'Content-Type':'application/json'},
+      body: JSON.stringify(payload)});
+    const j = await r.json().catch(() => null);
+    if (j && typeof j.ok === 'boolean') return j;
+    return {ok:false, error: (j && (j.error || j.message)) || ('Request failed (HTTP ' + r.status + ')')};
+  } catch(e){ return {ok:false, error:'Network error — the sync function could not be reached.'}; }
+}
+function cjStatus(id, msg, ok){
+  const el = $(id); if (!el) return;
+  el.textContent = msg;
+  el.style.color = ok === true ? 'var(--green)' : ok === false ? 'var(--red)' : 'var(--mut)';
+}
+async function cjTest(){
+  const btn = $('#cj-test-btn'); if (btn) btn.disabled = true;
+  cjStatus('#cj-test-status', 'Testing…', null);
+  const res = await gdCjCall({action:'auth-test'});
+  if (res.ok) cjStatus('#cj-test-status', res.message || 'CJ connection OK.', true);
+  else cjStatus('#cj-test-status', res.error || 'Connection test failed.', false);
+  if (btn) btn.disabled = false;
+}
+async function cjImport(){
+  const btn = $('#cj-import-btn'); if (!btn || btn.disabled) return;
+  const country = ($('#cj-imp-country') || {}).value || 'US';
+  const keyword = (($('#cj-imp-keyword') || {}).value || '').trim();
+  let size = parseInt(($('#cj-imp-size') || {}).value, 10);
+  if (isNaN(size)) size = 20; size = Math.min(100, Math.max(1, size));
+  const oldText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Import ho raha hai...';
+  cjStatus('#cj-import-status', 'Import ho raha hai...', null);
+  const payload = {action:'import', country, size};
+  if (keyword) payload.keyword = keyword;
+  const res = await gdCjCall(payload);
+  if (res.ok) {
+    cjStatus('#cj-import-status', (res.received || 0) + ' products aye — Products tab me dekho', true);
+    await gdDbLoadProducts(); /* refresh the shared product cache / list */
+    if (curTab === 'products') vProducts();
+  } else {
+    cjStatus('#cj-import-status', res.error || 'Import failed.', false);
+  }
+  btn.disabled = false; btn.textContent = oldText;
+}
+async function cjSync(){
+  const btn = $('#cj-sync-btn'); if (!btn || btn.disabled) return;
+  const oldText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Syncing…';
+  cjStatus('#cj-sync-status', 'Sync ho raha hai...', null);
+  const res = await gdCjCall({action:'sync'});
+  if (res.ok) {
+    cjStatus('#cj-sync-status', 'Updated ' + (res.updated || 0) + ', hata diye gaye ' + (res.removed || 0), true);
+    await gdDbLoadProducts(); /* refreshed stock shows in the Products list */
+    if (curTab === 'products') vProducts();
+  } else {
+    cjStatus('#cj-sync-status', res.error || 'Stock sync failed.', false);
+  }
+  btn.disabled = false; btn.textContent = oldText;
 }
 
 /* Cloud data refresh: re-render the open tab when DB data arrives —
