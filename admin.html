@@ -110,7 +110,7 @@ function orderTable(os, full){
   <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtUSD(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
   <td>${full ? `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'?'r':'y'}">${esc(o.status)}</span>`}</td>
   ${full?`<td><input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no."></td>
-  <td><button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button></td>`:''}</tr>`).join('')}</table></div>`;
+  <td><button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button>${cjCell(o)}</td>`:''}</tr>`).join('')}</table></div>`;
 }
 function vOrders(){
   const os = orders();
@@ -131,6 +131,38 @@ function saveTracking(id){
   const o = orders().find(x=>x.id===id);
   if (o) { o.tracking = val; gdDbUpdateOrder(o, {tracking: val}); }
   toast('Tracking saved for '+id);
+}
+/* CJ order push — orders containing real imported CJ products (item ids cj_*)
+   get a "Send to CJ" button until the function has stored a cjOrderId on the
+   order. The function runs the CJ flow up to the payment ID only; the CJ
+   balance payment itself is always done by the owner in My CJ. */
+function cjCell(o){
+  if (o.cjOrderId) return `<div style="margin-top:6px"><span class="pill g">CJ: ${esc(o.cjOrderId)}</span></div>`;
+  const hasCj = (o.items || []).some(i => String(i.id || '').startsWith('cj_'));
+  if (!hasCj) return '';
+  return `<div style="margin-top:6px"><button class="btn sm gold" id="cjpush-${esc(o.id)}" onclick="cjPushOrder('${o.id}')">Send to CJ</button><div id="cjpush-st-${esc(o.id)}" style="font-size:12px;font-weight:600;white-space:normal;max-width:230px;margin-top:4px"></div></div>`;
+}
+async function cjPushOrder(id){
+  if (!confirm('Ye order CJ ko bhej dun? CJ par order ban jayega — payment wahan tum ne apne CJ balance se khud karni hogi.')) return;
+  const btn = $('#cjpush-' + CSS.escape(id)); if (!btn || btn.disabled) return;
+  const stSel = '#cjpush-st-' + CSS.escape(id);
+  const oldText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'CJ ko bhej raha hai...';
+  cjStatus(stSel, 'CJ ko bhej raha hai...', null);
+  const res = await gdCjCall({action:'order-push', orderId:id});
+  if (res.ok) {
+    /* mirror onto the local copy too — the merged orders view prefers it */
+    const local = gdLoad('gd_orders', []); const lo = local.find(x => x.id === id);
+    if (lo) { lo.cjOrderId = res.cjOrderId || ''; lo.cjPaymentId = res.paymentId || ''; gdSave('gd_orders', local); }
+    cjStatus(stSel, 'CJ order ban gaya: ' + (res.cjOrderId || '') + ' — payment CJ balance se khud karni hai.', true);
+    toast('Order ' + id + ' CJ ko bhej diya');
+    __ordersRefreshAt = 0;
+    await gdDbFetchOrders(); /* fresh rows (incl. cjOrderId) -> pill replaces the button */
+    if (curTab === 'orders' || curTab === 'overview') show(curTab);
+  } else {
+    cjStatus(stSel, res.error || 'CJ push failed.', false);
+    btn.disabled = false; btn.textContent = oldText;
+  }
 }
 
 /* ---------- products ---------- */
@@ -244,7 +276,7 @@ function vSettings(){
   <button class="btn gold" onclick="saveSettings()">Save settings</button></div>
   <div class="card"><h3>Integrations — status</h3>
   <table><tr><th>Service</th><th>Status</th><th>What is needed</th></tr>
-  <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account. Product import + stock sync are LIVE in the CJ card under Settings. Order push comes next.</td></tr>
+  <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account. Product import + stock sync are LIVE in the CJ card under Settings. Orders with CJ products can be sent to CJ from the Orders tab — the CJ balance payment itself stays manual (My CJ).</td></tr>
   <tr><td>Supabase (database)</td><td><span class="pill g">Connected</span></td><td>Project "globaldrop" — products, orders, reviews and store settings sync to the cloud DB; this browser keeps a local fallback copy.</td></tr>
   <tr><td>Card payments</td><td><span class="pill y">Not connected</span></td><td>Payment provider account eligible for the business country (e.g. Whop/Stripe where supported).</td></tr>
   <tr><td>Exchange rates</td><td><span class="pill g">Live</span></td><td>open.er-api.com free rates, cached 12 hours, static fallback included.</td></tr></table></div>

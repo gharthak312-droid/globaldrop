@@ -215,7 +215,8 @@ function gdRowToOrder(r){
     phone:c.phone || '', addr:c.address || '', city:c.city || '', zip:c.zip || '', country:r.country || '',
     items:r.items || [], sub:gdNum(r.subtotal), disc:0, ship:gdNum(r.shipping), total:gdNum(r.total),
     cur:r.currency || 'USD', payment:r.payment || 'cod',
-    status:(r.status === 'Pending' ? 'Placed' : (r.status || 'Placed')), tracking:c.tracking || '' };
+    status:(r.status === 'Pending' ? 'Placed' : (r.status || 'Placed')), tracking:c.tracking || '',
+    cjOrderId:c.cjOrderId || '', cjPaymentId:c.cjPaymentId || '' };
 }
 function gdRowToReview(r){
   return { pid:r.product_id, name:r.name || '', stars:r.rating || 5, text:r.body || '', verified:!!r.verified,
