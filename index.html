@@ -491,7 +491,7 @@ function productView(id){
       <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="pdpQty(-1)">−</button><input id="pdpQtyIn" value="1" readonly><button onclick="pdpQty(1)">+</button></span></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
         <button class="btn gold" style="flex:1;min-width:150px" onclick="pdpAdd(false)" ${(!avail||p.stock<=0)?'disabled':''}>🛒 Add to Cart</button>
-        <button class="btn" style="flex:1;min-width:150px" onclick="pdpAdd(true)" ${(!avail||p.stock<=0)?'disabled':''}>Buy Now</button>
+        <button class="btn" style="flex:1;min-width:150px" onclick="pdpAdd(true)" ${(!avail||p.stock<=0)?'disabled':''}>Order Now</button>
         <button class="iconbtn ${S.wish.includes(p.id)?'on':''}" onclick="toggleWish('${p.id}',this);this.classList.toggle('on')">❤️</button>
       </div>
       <div class="infobox">
