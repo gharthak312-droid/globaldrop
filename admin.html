@@ -364,7 +364,17 @@ function vProducts(){
   <div class="card"><h3>Import products (CSV)</h3>
    <p class="hint" style="margin:5px 0 8px">One product per line: <b>name, category-slug, subcategory, price, sale, image-url, supplier, sku, countries, stock</b> (countries me sirf EK country code — jese PK). Lines starting with # are skipped.</p>
    <textarea id="csvIn" rows="4" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px" placeholder="Example Product, electronics, Smartwatches, 39.99, 29.99, https://…, CJ, CJ-XX-1, ALL, 100"></textarea>
-   <button class="btn" style="margin-top:9px" onclick="importCSV()">Import CSV</button></div>
+   <button class="btn" style="margin-top:9px" onclick="importCSV()">Import CSV</button>
+   <div style="border-top:1px solid var(--line);margin:14px 0 10px"></div>
+   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="font-size:13px;font-weight:600">Ya CSV file upload karo:</label><input type="file" id="csvFile" accept=".csv,text/csv,text/plain" style="font-size:13px"><button class="btn gold" onclick="uploadCSVFile()">Upload CSV file</button></div></div>
+  <div class="card"><h3>Meri Profit Rates — PKR (Markaz wale products)</h3>
+   <table><tr><th>Product ki qeemat</th><th>Profit</th></tr>
+   <tr><td>Rs 1 – 500</td><td><b>Profit Rs 100</b></td></tr>
+   <tr><td>Rs 501 – 1,000</td><td><b>Profit Rs 200</b></td></tr>
+   <tr><td>Rs 1,001 – 2,000</td><td><b>Profit Rs 300</b></td></tr>
+   <tr><td>Rs 2,001 – 3,000</td><td><b>Profit Rs 400</b></td></tr>
+   <tr><td>Rs 3,000 se upar</td><td><b>Profit Rs 500</b></td></tr></table>
+   <p class="hint" style="margin:9px 0 0">Ye rates Markaz ki CSV banate waqt har product ki qeemat par auto lagte hain. (Yaad-dihani ke liye — rates 24 Oct 2026 ko tay hue.)</p></div>
   <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
    ${prods.map(p=>`<tr><td><img class="th" src="${esc(p.img)}" onerror="this.style.visibility='hidden'"></td>
    <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}${p.leaf?`<br><small class="hint">${esc(p.leaf)}</small>`:''}</td>
@@ -420,6 +430,14 @@ function importCSV(){
     n++;
   }
   if (n) { gdSave('gd_products', prods); gdDbInsertProducts(added); toast(n + ' products imported'); vProducts(); } else toast('No valid lines found');
+}
+function uploadCSVFile(){
+  const inp = $('#csvFile');
+  if (!inp || !inp.files || !inp.files.length) { toast('Pehle CSV file choose karo'); return; }
+  const reader = new FileReader();
+  reader.onload = () => { $('#csvIn').value = String(reader.result || ''); importCSV(); };
+  reader.onerror = () => toast('File parh nahi saki — dobarah try karo');
+  reader.readAsText(inp.files[0]);
 }
 async function resetCatalog(){
   if (!confirm('Reset catalog to the built-in demo products? Your edits will be lost.')) return;
