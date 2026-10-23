@@ -295,7 +295,7 @@ function setCountry(code){
   /* Cart cleanup: products not listed for the new country cannot be delivered
      there, so they leave the cart automatically (with a clear notice). */
   const before = S.cart.length;
-  S.cart = S.cart.filter(i => { const p = gdProduct(i.id); return p && gdVisibleIn(p, code); });
+  S.cart = S.cart.filter(i => { const p = gdProducts().find(x => x.id === i.id); return p && gdAvailable(p, code); });
   if (S.cart.length < before) { gdSave('gd_cart', S.cart); toast((before - S.cart.length) + ' item(s) removed from cart — not available in ' + gdCountry(code).name); }
   paintChrome(); route();
 }
