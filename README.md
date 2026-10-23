@@ -9,7 +9,7 @@ browser data layer today, Supabase backend at production setup.
   cart, guest checkout, order tracking, wishlist, reviews, policy pages.
 - `admin.html` — admin dashboard (PIN gate, default 1234 — change in Settings):
   overview stats, product CRUD + CSV import, orders + tracking + status,
-  coupons, store settings, the owner's CJ supplier connection, integration status.
+  store settings, the owner's CJ supplier connection, integration status.
 - `store-data.js` — shared data layer: 13 categories with subcategories,
   41 countries with currencies, demo catalog (28 products), live exchange-rate
   engine (open.er-api.com, 12h cache, static fallback), shipping/delivery rules.
@@ -21,13 +21,14 @@ browser data layer today, Supabase backend at production setup.
   Pakistan/Gulf set, seller products = seller's country).
 - Prices stored in USD and converted with **live daily rates**; disclosure is in
   the footer and checkout (charged currency depends on payment method).
-- Cart, coupons (WELCOME10), checkout with COD (Pakistan), order confirmation,
+- Cart, checkout with COD (Pakistan), order confirmation,
   order tracking, stock decrement, genuine-review system (empty until real
   customers review; verified-purchase badge is checked against the order email —
   no customer accounts anywhere, by the owner's decision: guest checkout only),
   newsletter capture.
-- Admin (the owner — the platform's only seller) manages products/orders/coupons/settings and his CJ connection; changes persist in the
-  browser and instantly reflect on the storefront (same-device demo mode).
+- Admin (the owner — the platform's only seller) manages products/orders/settings and his CJ connection. Since Stage 2,
+  products, orders, reviews and store settings sync to a Supabase cloud database (project "globaldrop"); the browser
+  keeps a local fallback copy, and the owner's CJ email/API key stay local-only — they are never sent to the database.
 - Demo catalog is clearly labelled in the footer and admin; no fake reviews,
   sales figures or countdowns anywhere.
 

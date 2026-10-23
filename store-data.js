@@ -114,8 +114,14 @@ const GD_FALLBACK_RATES = {USD:1, PKR:280, GBP:0.79, EUR:0.92, AED:3.67, SAR:3.7
 const gdLoad = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } };
 const gdSave = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
 
-function gdSettings(){ return Object.assign({}, GD_STORE, gdLoad('gd_settings', {})); }
+/* Supabase in-memory caches (filled by the Stage-2 DB layer at the bottom of
+   this file). While null, every reader falls back to localStorage / built-ins,
+   so the store renders instantly and never renders empty on a network failure. */
+let __gdDbProducts = null, __gdDbReviews = null, __gdDbOrders = null, __gdRemoteSettings = null;
+
+function gdSettings(){ return Object.assign({}, GD_STORE, gdLoad('gd_settings', {}), __gdRemoteSettings || {}); }
 function gdProducts(){
+  if (__gdDbProducts) return __gdDbProducts;
   const saved = gdLoad('gd_products', null);
   return Array.isArray(saved) && saved.length ? saved : GD_PRODUCTS.slice();
 }
@@ -154,3 +160,165 @@ function gdFmt(usd, cur, rates){
   catch(e){ return cur + ' ' + val.toFixed(2); }
 }
 function gdUid(prefix){ return prefix + Date.now().toString(36).toUpperCase() + Math.floor(Math.random()*90+10); }
+
+/* ================= Supabase cloud DB — Stage 2 =================
+   Project "globaldrop" (new Free organization). The publishable key is public
+   by design (same pattern as TopRankSM) and safe in site code.
+   Reads fill the in-memory caches above, then pages re-render via the
+   'gd:data' window event (mirrors the live-FX refresh pattern).
+   Writes go to REST and ALSO mirror to localStorage, so every screen keeps
+   working if the network or the DB is unreachable.
+   SECURITY: the owner's CJ email + CJ API key live ONLY in localStorage
+   (gd_settings.cjEmail / cjKey). They are NEVER sent to Supabase — the
+   settings sync below whitelists store-display fields only. */
+const GD_SB_URL = 'https://orzsyrrckekegymjpalx.supabase.co';
+const GD_SB_KEY = 'sb_publishable_lL4h47MDzjR8Gx2f0JCb8g_F738zRT4';
+const GD_SB = GD_SB_URL + '/rest/v1/';
+
+function gdDbEmit(kind){ try { window.dispatchEvent(new CustomEvent('gd:data', {detail:{kind}})); } catch(e){} }
+async function gdDb(path, opts){
+  opts = opts || {};
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(GD_SB + path, Object.assign({}, opts, {
+      signal: ctl.signal,
+      headers: Object.assign({'apikey': GD_SB_KEY, 'Authorization': 'Bearer ' + GD_SB_KEY, 'Content-Type': 'application/json'}, opts.headers || {})
+    }));
+    clearTimeout(to);
+    if (!r.ok) return null;
+    if (r.status === 204) return true;
+    const txt = await r.text();
+    if (!txt) return true;
+    try { return JSON.parse(txt); } catch(e){ return true; }
+  } catch(e){ return null; }
+}
+const gdNum = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+
+/* ----- row <-> app-shape mapping ----- */
+function gdRowToProduct(r){
+  return { id:r.id, name:r.name, cat:r.cat || '', sub:r.sub || '', price:gdNum(r.price),
+    sale:(r.sale == null ? null : gdNum(r.sale)), img:r.img || '', supplier:r.supplier || 'CJ', sku:r.sku || '',
+    countries:[r.country], colors:r.colors || [], sizes:r.sizes || [], desc:r.description || '', specs:r.specs || {},
+    stock:r.stock || 0, days:[r.days_min || 5, r.days_max || 9], featured:!!r.featured, isNew:!!r.is_new };
+}
+function gdProductToRow(p){
+  return { id:p.id, name:p.name, cat:p.cat, sub:p.sub || '', price:p.price,
+    sale:(p.sale == null || p.sale === '' ? null : p.sale), img:p.img || '', supplier:p.supplier || 'CJ', sku:p.sku || '',
+    country:(Array.isArray(p.countries) && p.countries[0]) || 'PK', colors:p.colors || [], sizes:p.sizes || [],
+    description:p.desc || '', specs:p.specs || {}, stock:p.stock || 0,
+    days_min:(p.days && p.days[0]) || 5, days_max:(p.days && p.days[1]) || 9, featured:!!p.featured, is_new:!!p.isNew };
+}
+function gdOrderCustomer(o){ return {name:o.name || '', phone:o.phone || '', address:o.addr || '', city:o.city || '', zip:o.zip || '', tracking:o.tracking || ''}; }
+function gdRowToOrder(r){
+  const c = r.customer || {};
+  return { id:r.id, at:r.created_at ? Date.parse(r.created_at) : Date.now(), email:r.email || '', name:c.name || '',
+    phone:c.phone || '', addr:c.address || '', city:c.city || '', zip:c.zip || '', country:r.country || '',
+    items:r.items || [], sub:gdNum(r.subtotal), disc:0, ship:gdNum(r.shipping), total:gdNum(r.total),
+    cur:r.currency || 'USD', payment:r.payment || 'cod',
+    status:(r.status === 'Pending' ? 'Placed' : (r.status || 'Placed')), tracking:c.tracking || '' };
+}
+function gdRowToReview(r){
+  return { pid:r.product_id, name:r.name || '', stars:r.rating || 5, text:r.body || '', verified:!!r.verified,
+    date:r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : '' };
+}
+
+/* ----- cache accessors / merged views (localStorage + DB) ----- */
+function gdSetProductsCache(list){ __gdDbProducts = list; }
+function gdDbReviewsCache(){ return __gdDbReviews; }
+function gdDbOrdersCache(){ return __gdDbOrders; }
+function gdPushReviewCache(rev){ if (__gdDbReviews) __gdDbReviews.unshift(rev); }
+function gdReviewsFor(pid){
+  if (__gdDbReviews) return __gdDbReviews.filter(r => r.pid === pid);
+  return gdLoad('gd_reviews', []).filter(r => r.pid === pid);
+}
+function gdAllOrdersMerged(){
+  const local = gdLoad('gd_orders', []);
+  if (!__gdDbOrders) return local;
+  const ids = new Set(local.map(o => o.id));
+  return local.concat(__gdDbOrders.filter(o => !ids.has(o.id))).sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+
+/* ----- loaders (startup + on demand) ----- */
+async function gdDbLoadProducts(){
+  const rows = await gdDb('products?select=*&order=id.asc');
+  if (Array.isArray(rows) && rows.length) { __gdDbProducts = rows.map(gdRowToProduct); gdDbEmit('products'); }
+  return __gdDbProducts;
+}
+async function gdDbLoadSettings(){
+  const rows = await gdDb('settings?select=value&key=eq.store');
+  if (Array.isArray(rows) && rows.length && rows[0].value) {
+    const v = rows[0].value;
+    __gdRemoteSettings = {name:v.name, tagline:v.tagline, announcement:v.announcement, supportEmail:v.supportEmail, whatsapp:v.whatsapp};
+    if (v.commissionPct != null) __gdRemoteSettings.commissionPct = v.commissionPct;
+    gdDbEmit('settings');
+  }
+  return __gdRemoteSettings;
+}
+async function gdDbLoadReviews(){
+  const rows = await gdDb('reviews?select=*&order=created_at.desc&limit=1000');
+  if (Array.isArray(rows)) { __gdDbReviews = rows.map(gdRowToReview); gdDbEmit('reviews'); }
+  return __gdDbReviews;
+}
+async function gdDbFetchOrders(){
+  const rows = await gdDb('orders?select=*&order=created_at.desc&limit=1000');
+  if (Array.isArray(rows)) { __gdDbOrders = rows.map(gdRowToOrder); gdDbEmit('orders'); }
+  return __gdDbOrders;
+}
+async function gdDbGetOrder(id){
+  const rows = await gdDb('orders?select=*&id=eq.' + encodeURIComponent(id));
+  return (Array.isArray(rows) && rows.length) ? gdRowToOrder(rows[0]) : null;
+}
+
+/* ----- writers ----- */
+async function gdDbSaveProduct(p){ /* upsert: covers both create and edit */
+  const res = await gdDb('products?on_conflict=id', {method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(gdProductToRow(p))});
+  return res !== null;
+}
+async function gdDbDeleteProduct(id){
+  const res = await gdDb('products?id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'Prefer':'return=minimal'}});
+  return res !== null;
+}
+async function gdDbInsertProducts(list){
+  if (!list.length) return true;
+  const res = await gdDb('products?on_conflict=id', {method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(list.map(gdProductToRow))});
+  return res !== null;
+}
+async function gdDbReplaceCatalog(list){
+  const del = await gdDb('products?id=neq.__none__', {method:'DELETE', headers:{'Prefer':'return=minimal'}});
+  if (del === null) return false;
+  return gdDbInsertProducts(list);
+}
+async function gdDbPatchStock(id, stock){
+  const res = await gdDb('products?id=eq.' + encodeURIComponent(id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({stock})});
+  return res !== null;
+}
+async function gdDbPostOrder(o){
+  const row = {id:o.id, email:o.email, customer:gdOrderCustomer(o), items:o.items, country:o.country,
+    subtotal:o.sub, shipping:o.ship, total:o.total, currency:o.cur, payment:o.payment, status:'Pending'};
+  const res = await gdDb('orders', {method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(row)});
+  if (res !== null && __gdDbOrders) __gdDbOrders.unshift(gdRowToOrder(row));
+  return res !== null;
+}
+async function gdDbUpdateOrder(o, patch){
+  const body = {};
+  if (patch.status !== undefined) body.status = (patch.status === 'Placed' ? 'Pending' : patch.status);
+  if (patch.tracking !== undefined) { const c = gdOrderCustomer(o); c.tracking = patch.tracking; body.customer = c; }
+  const res = await gdDb('orders?id=eq.' + encodeURIComponent(o.id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body)});
+  return res !== null;
+}
+async function gdDbPostReview(rev, email){
+  const row = {product_id:rev.pid, name:rev.name, email:email || '', rating:rev.stars, body:rev.text, verified:!!rev.verified};
+  const res = await gdDb('reviews', {method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(row)});
+  return res !== null;
+}
+/* Store-display settings ONLY — cjEmail / cjKey are deliberately NOT part of
+   this payload and never leave the browser. */
+async function gdDbSaveStoreSettings(st){
+  const value = {name:st.name, tagline:st.tagline || '', announcement:st.announcement || '', commissionPct:st.commissionPct, supportEmail:st.supportEmail || '', whatsapp:st.whatsapp || ''};
+  __gdRemoteSettings = Object.assign({}, value);
+  const res = await gdDb('settings?on_conflict=key', {method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify({key:'store', value})});
+  return res !== null;
+}
+
+/* Kick off cloud loads immediately; pages re-render when data arrives. */
+const GD_DB_READY = Promise.allSettled([gdDbLoadProducts(), gdDbLoadSettings(), gdDbLoadReviews()]);

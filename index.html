@@ -486,7 +486,7 @@ function productView(id){
   const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
   const ct = CAT(p.cat) || {name:p.cat, slug:p.cat};
   const rel = P().filter(x => x.cat===p.cat && x.id!==p.id && inCountry(x)).slice(0,4);
-  const revs = gdLoad('gd_reviews', []).filter(r => r.pid === id);
+  const revs = gdReviewsFor(id);
   const avail = inCountry(p);
   $('#app').innerHTML = `
   <div class="crumbs"><a href="#/">Home</a> › <a href="#/cat/${ct.slug}">${esc(ct.name)}</a> › ${esc(p.sub)} › ${esc(p.name)}</div>
@@ -573,26 +573,27 @@ function qvPick(kind, val, el){ qvSel[kind] = val; el.parentElement.querySelecto
 function qvQty(d){ qvSel.qty = Math.max(1, Math.min(99, qvSel.qty + d)); $('#qvQtyIn').value = qvSel.qty; }
 function qvAdd(buy){ addToCart(qvSel.id, qvSel.color, qvSel.size, qvSel.qty); closeModal('qvModal'); if (buy) location.hash = '#/checkout'; }
 
-function submitReview(pid){
+async function submitReview(pid){
   const name = $('#revName').value.trim(), email = $('#revEmail').value.trim().toLowerCase();
   const text = $('#revText').value.trim();
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Please add your name and a valid email'); return; }
   if (!text) { toast('Please write something first'); return; }
-  const verified = gdLoad('gd_orders', []).some(o => o.email.toLowerCase() === email && o.items.some(i => i.id === pid));
+  const bought = list => list.some(o => (o.email || '').toLowerCase() === email && (o.items || []).some(i => i.id === pid));
+  let verified = bought(gdAllOrdersMerged());
+  if (!verified) { await gdDbFetchOrders(); verified = bought(gdAllOrdersMerged()); }
+  const rev = {pid, name, stars: parseInt($('#revStars').value), text, verified, date: new Date().toLocaleDateString('en-GB')};
+  await gdDbPostReview(rev, email); /* cloud copy — local save below stays as fallback */
   const revs = gdLoad('gd_reviews', []);
-  revs.unshift({pid, name, stars: parseInt($('#revStars').value), text, verified, date: new Date().toLocaleDateString('en-GB')});
-  gdSave('gd_reviews', revs); toast('Review submitted — thank you!'); productView(pid);
+  revs.unshift(rev);
+  gdSave('gd_reviews', revs); gdPushReviewCache(rev); toast('Review submitted — thank you!'); productView(pid);
 }
 
 /* ---------- cart / checkout ---------- */
 function cartTotals(){
   let sub = 0;
   const items = S.cart.map(ci => { const p = PROD(ci.id); if (!p) return null; const lt = effPrice(p) * ci.qty; sub += lt; return {ci, p, lt}; }).filter(Boolean);
-  const coupon = gdLoad('gd_active_coupon', null);
-  let disc = 0;
-  if (coupon) { const cp = (gdLoad('gd_coupons', null) || [{code:'WELCOME10',type:'pct',val:10,active:true}]).find(c => c.code === coupon && c.active); if (cp) disc = cp.type === 'pct' ? sub * cp.val/100 : Math.min(cp.val, sub); }
-  const ship = items.length ? gdShipping(S.country, sub - disc) : 0;
-  return {items, sub, disc, ship, total: sub - disc + ship, coupon};
+  const ship = items.length ? gdShipping(S.country, sub) : 0;
+  return {items, sub, ship, total: sub + ship};
 }
 function cartView(){
   const t = cartTotals();
@@ -606,9 +607,7 @@ function cartView(){
       <a href="#" onclick="cartRemove('${p.id}','${esc(ci.color)}','${esc(ci.size)}');return false" style="color:var(--red);font-size:13px;font-weight:600">Remove</a></div></div>
       <b>${money(lt)}</b></div>`).join('')}</div>
     <div class="sumbox"><h3 style="margin-bottom:10px">Order Summary</h3>
-      <div class="fld" style="display:flex;gap:8px"><input id="couponIn" placeholder="Coupon code (try WELCOME10)" value="${t.coupon||''}"><button class="btn ghost sm" onclick="applyCoupon()">Apply</button></div>
       <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
-      ${t.disc?`<div class="line"><span>Coupon discount</span><b style="color:var(--green)">−${money(t.disc)}</b></div>`:''}
       <div class="line"><span>Delivery within ${esc(gdCountry(S.country).name)}</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
       <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
       <small style="color:var(--mut)">Shown in ${esc(S.cur)}. Final charged currency depends on payment method.</small>
@@ -623,13 +622,6 @@ function cartQty(id, color, size, d){
   gdSave('gd_cart', S.cart); paintChrome(); cartView();
 }
 function cartRemove(id, color, size){ S.cart = S.cart.filter(i => !(i.id===id && i.color===color && i.size===size)); gdSave('gd_cart', S.cart); paintChrome(); cartView(); }
-function applyCoupon(){
-  const code = $('#couponIn').value.trim().toUpperCase();
-  const cps = gdLoad('gd_coupons', null) || [{code:'WELCOME10',type:'pct',val:10,active:true}];
-  const cp = cps.find(c => c.code === code && c.active);
-  if (cp) { gdSave('gd_active_coupon', code); toast('Coupon applied: ' + code); } else { gdSave('gd_active_coupon', null); toast('Coupon not valid'); }
-  cartView();
-}
 let payMethod = 'cod';
 function checkoutView(){
   const t = cartTotals();
@@ -660,7 +652,6 @@ function checkoutView(){
    <div class="sumbox"><h3 style="margin-bottom:10px">Your Order</h3>
      ${t.items.map(({ci,p,lt})=>`<div class="line"><span>${esc(p.name)} × ${ci.qty}</span><b>${money(lt)}</b></div>`).join('')}
      <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
-     ${t.disc?`<div class="line"><span>Discount</span><b style="color:var(--green)">−${money(t.disc)}</b></div>`:''}
      <div class="line"><span>Shipping</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
      <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
      <div style="font-size:12.5px;color:var(--mut);margin-top:8px">🚚 Estimated delivery: ${t.items.map(({p})=>gdDeliveryDays(p,S.country)).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
@@ -680,19 +671,27 @@ function placeOrder(){
   const order = {
     id: gdUid('GD'), at: Date.now(), email, name, phone, addr, city, zip: g('#coZip'), country: S.country,
     items: t.items.map(({ci,p,lt}) => ({id:p.id, name:p.name, img:p.img, qty:ci.qty, color:ci.color, size:ci.size, price:effPrice(p), lt, supplier:p.supplier, sku:p.sku})),
-    sub: t.sub, disc: t.disc, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
+    sub: t.sub, disc: 0, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
   };
   orders.unshift(order); gdSave('gd_orders', orders);
+  gdDbPostOrder(order); /* cloud copy — the local save above stays as fallback */
   /* decrement stock in the live product list */
   const prods = gdProducts();
-  t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) p.stock = Math.max(0, p.stock - ci.qty); });
+  t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) { p.stock = Math.max(0, p.stock - ci.qty); gdDbPatchStock(p.id, p.stock); } });
   gdSave('gd_products', prods);
-  S.cart = []; gdSave('gd_cart', []); gdSave('gd_active_coupon', null); paintChrome();
+  S.cart = []; gdSave('gd_cart', []); paintChrome();
   location.hash = '#/confirm/' + order.id;
 }
 function confirmView(id){
-  const o = gdLoad('gd_orders', []).find(x => x.id === id);
-  if (!o) { $('#app').innerHTML = '<div class="empty" style="margin-top:26px">Order not found.</div>'; return; }
+  const o = gdAllOrdersMerged().find(x => x.id === id);
+  if (o) { renderConfirm(o); return; }
+  $('#app').innerHTML = '<div class="empty" style="margin-top:26px"><div class="ic">🔎</div>Looking up your order…</div>';
+  gdDbGetOrder(id).then(d => {
+    if (d) renderConfirm(d);
+    else $('#app').innerHTML = '<div class="empty" style="margin-top:26px">Order not found.</div>';
+  });
+}
+function renderConfirm(o){
   $('#app').innerHTML = `<div class="empty" style="margin-top:26px;border-style:solid;border-color:#a6f4c5;background:#f0fdf4">
     <div class="ic">✅</div><h2 style="color:var(--green)">Order placed — thank you, ${esc(o.name.split(' ')[0])}!</h2>
     <p style="margin-top:8px">Your order number is <b>${esc(o.id)}</b>.<br>Total: <b>${gdFmt(o.total, o.cur, S.rates)}</b> · Payment: <b>${o.payment==='cod'?'Cash on Delivery':'Card'}</b><br>
@@ -707,9 +706,10 @@ function trackView(){
   <div class="fld"><label>Email used at checkout</label><input id="trEmail" type="email"></div>
   <button class="btn gold" style="width:100%" onclick="doTrack()">Track</button><div id="trOut" style="margin-top:16px"></div></div>`;
 }
-function doTrack(){
+async function doTrack(){
   const id = $('#trId').value.trim().toUpperCase(), em = $('#trEmail').value.trim().toLowerCase();
-  const o = gdLoad('gd_orders', []).find(x => x.id.toUpperCase() === id && x.email.toLowerCase() === em);
+  let o = gdAllOrdersMerged().find(x => x.id.toUpperCase() === id && (x.email || '').toLowerCase() === em);
+  if (!o) { const d = await gdDbGetOrder(id); if (d && (d.email || '').toLowerCase() === em) o = d; }
   $('#trOut').innerHTML = o ? `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : '<p style="color:var(--red);font-weight:600">Order not found — check the number and email.</p>';
 }
 function wishlistView(){
@@ -745,6 +745,16 @@ $('#newsBtn').onclick = () => {
   const list = gdLoad('gd_newsletter', []); if (!list.includes(em)) list.push(em);
   gdSave('gd_newsletter', list); $('#newsMsg').textContent = 'Subscribed — welcome to GlobalDrop!'; $('#newsEmail').value = '';
 };
+
+/* ---------- cloud data refresh (Stage 2) ---------- */
+window.addEventListener('gd:data', e => {
+  const ae = document.activeElement;
+  if (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && ae.id !== 'searchInput') return; /* never wipe a form being filled */
+  const h = location.hash || '#/';
+  if (h.startsWith('#/checkout') || h.startsWith('#/track')) return;
+  const kind = e.detail && e.detail.kind;
+  if (kind === 'products' || kind === 'settings' || kind === 'reviews') route();
+});
 
 /* ---------- router & init ---------- */
 function route(){

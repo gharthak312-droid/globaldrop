@@ -67,14 +67,19 @@ const pin = () => gdLoad('gd_admin_pin','1234');
 function tryPin(){ if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
 $('#pinIn').addEventListener('keydown', e => { if (e.key==='Enter') tryPin(); });
 
-const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['coupons','🎟️ Coupons'],['settings','⚙️ Settings']];
+const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['settings','⚙️ Settings']];
 let curTab = 'overview';
 function show(tab){
   curTab = tab;
   $('#tabs').innerHTML = TABS.map(([k,l]) => `<button class="tab ${k===tab?'on':''}" onclick="show('${k}')">${l}</button>`).join('');
-  ({overview:vOverview, products:vProducts, orders:vOrders, coupons:vCoupons, settings:vSettings})[tab]();
+  ({overview:vOverview, products:vProducts, orders:vOrders, settings:vSettings})[tab]();
 }
-const orders = () => gdLoad('gd_orders', []);
+const orders = () => gdAllOrdersMerged();
+let __ordersRefreshAt = 0;
+function refreshOrders(){
+  const now = Date.now(); if (now - __ordersRefreshAt < 20000) return; __ordersRefreshAt = now;
+  gdDbFetchOrders().then(() => { if (curTab === 'orders' || curTab === 'overview') show(curTab); });
+}
 const fmtUSD = n => '$' + Number(n||0).toFixed(2);
 
 function vOverview(){
@@ -88,7 +93,7 @@ function vOverview(){
     <div class="stat"><b>${os.length}</b><small>Total orders</small></div>
     <div class="stat"><b>${os.filter(o=>o.status==='Placed').length}</b><small>Orders awaiting action</small></div>
     <div class="stat"><b>${prods.length}</b><small>Products in catalog</small></div>
-    <div class="stat"><b>${gdLoad('gd_reviews',[]).length}</b><small>Customer reviews</small></div>
+    <div class="stat"><b>${(gdDbReviewsCache() || gdLoad('gd_reviews',[])).length}</b><small>Customer reviews</small></div>
     <div class="stat"><b>${gdLoad('gd_newsletter',[]).length}</b><small>Newsletter subscribers</small></div>
     <div class="stat"><b>${os.length?fmtUSD(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled').length)):'$0.00'}</b><small>Average order value</small></div>
     <div class="stat"><b>${prods.filter(p=>p.stock<=0).length}</b><small>Out-of-stock products</small></div>
@@ -96,6 +101,7 @@ function vOverview(){
   <div class="card" style="margin-top:14px"><h3>Sales by country</h3>
   ${Object.keys(byCountry).length ? Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc((gdCountry(c)||{}).name||c)}</span><b>${fmtUSD(v)}</b></div>`).join('') : '<p class="hint">No orders yet.</p>'}</div>
   <div class="card"><h3>Recent orders</h3>${os.length ? orderTable(os.slice(0,6), false) : '<p class="hint">No orders yet — orders placed on the store will appear here.</p>'}</div>`;
+  refreshOrders();
 }
 function orderTable(os, full){
   return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (USD)</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
@@ -109,9 +115,23 @@ function orderTable(os, full){
 function vOrders(){
   const os = orders();
   $('#view').innerHTML = `<div class="card"><h3>All Orders (${os.length})</h3><p class="hint" style="margin:5px 0 10px">Update status and add tracking numbers — customers see both on the Track Order page. Supplier fulfillment: CJ items carry their CJ SKU; PK items go to the local supplier.</p>${os.length?orderTable(os,true):'<p class="hint">No orders yet.</p>'}</div>`;
+  refreshOrders();
 }
-function setStatus(id, st){ const os = orders(); const o = os.find(x=>x.id===id); if (o){ o.status = st; gdSave('gd_orders', os); toast('Order '+id+' → '+st); } }
-function saveTracking(id){ const os = orders(); const o = os.find(x=>x.id===id); if (o){ o.tracking = $('#trk-'+CSS.escape(id)).value.trim(); gdSave('gd_orders', os); toast('Tracking saved for '+id); } }
+function setStatus(id, st){
+  const local = gdLoad('gd_orders', []); const lo = local.find(x=>x.id===id);
+  if (lo) { lo.status = st; gdSave('gd_orders', local); }
+  const o = orders().find(x=>x.id===id);
+  if (o) { o.status = st; gdDbUpdateOrder(o, {status: st}); }
+  if (lo || o) toast('Order '+id+' → '+st);
+}
+function saveTracking(id){
+  const val = $('#trk-'+CSS.escape(id)).value.trim();
+  const local = gdLoad('gd_orders', []); const lo = local.find(x=>x.id===id);
+  if (lo) { lo.tracking = val; gdSave('gd_orders', local); }
+  const o = orders().find(x=>x.id===id);
+  if (o) { o.tracking = val; gdDbUpdateOrder(o, {tracking: val}); }
+  toast('Tracking saved for '+id);
+}
 
 /* ---------- products ---------- */
 let editId = null;
@@ -154,7 +174,7 @@ function vProducts(){
    <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>
    <td style="white-space:nowrap"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button> <button class="btn sm red" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}
    </table></div>
-   <button class="btn ghost sm" style="margin-top:12px" onclick="if(confirm('Reset catalog to the built-in demo products? Your edits will be lost.')){localStorage.removeItem('gd_products');vProducts();toast('Catalog reset')}">Reset to demo catalog</button></div>`;
+   <button class="btn ghost sm" style="margin-top:12px" onclick="resetCatalog()">Reset to demo catalog</button></div>`;
   if (editId) fillForm(editId);
 }
 function fillForm(id){
@@ -183,45 +203,34 @@ function saveProduct(){
     days: [7,12], specs: {}
   };
   const prods = gdProducts();
-  if (editId) { const p = prods.find(x=>x.id===editId); Object.assign(p, data); toast('Product updated'); }
-  else { prods.unshift(Object.assign({id: 'p' + Date.now().toString(36)}, data)); toast('Product added'); }
-  gdSave('gd_products', prods); editId = null; vProducts();
+  let savedObj;
+  if (editId) { const p = prods.find(x=>x.id===editId); Object.assign(p, data); savedObj = p; toast('Product updated'); }
+  else { savedObj = Object.assign({id: 'p' + Date.now().toString(36)}, data); prods.unshift(savedObj); toast('Product added'); }
+  gdSave('gd_products', prods);
+  gdDbSaveProduct(savedObj); /* cloud upsert — local save above stays as fallback */
+  editId = null; vProducts();
 }
-function delProduct(id){ if (!confirm('Delete this product?')) return; gdSave('gd_products', gdProducts().filter(p=>p.id!==id)); vProducts(); toast('Product deleted'); }
+function delProduct(id){ if (!confirm('Delete this product?')) return; gdSave('gd_products', gdProducts().filter(p=>p.id!==id)); gdDbDeleteProduct(id); gdSetProductsCache(gdProducts().filter(p=>p.id!==id)); vProducts(); toast('Product deleted'); }
 function importCSV(){
   const lines = $('#csvIn').value.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('#'));
-  let n = 0; const prods = gdProducts();
+  let n = 0; const prods = gdProducts(); const added = [];
   for (const ln of lines) {
     const f = ln.split(',').map(s=>s.trim());
     if (f.length < 10 || isNaN(parseFloat(f[3]))) continue;
-    prods.unshift({id:'p'+Date.now().toString(36)+n, name:f[0], cat:f[1], sub:f[2], price:parseFloat(f[3]), sale:parseFloat(f[4])||null, img:f[5], supplier:f[6]||'CJ', sku:f[7], countries: [(f[8].split('|')[0] || 'PK').trim().toUpperCase()], stock:parseInt(f[9])||50, colors:[], sizes:[], desc:'', specs:{}, days:[7,12], featured:false, isNew:true});
+    const np = {id:'p'+Date.now().toString(36)+n, name:f[0], cat:f[1], sub:f[2], price:parseFloat(f[3]), sale:parseFloat(f[4])||null, img:f[5], supplier:f[6]||'CJ', sku:f[7], countries: [(f[8].split('|')[0] || 'PK').trim().toUpperCase()], stock:parseInt(f[9])||50, colors:[], sizes:[], desc:'', specs:{}, days:[7,12], featured:false, isNew:true};
+    prods.unshift(np); added.push(np);
     n++;
   }
-  if (n) { gdSave('gd_products', prods); toast(n + ' products imported'); vProducts(); } else toast('No valid lines found');
+  if (n) { gdSave('gd_products', prods); gdDbInsertProducts(added); toast(n + ' products imported'); vProducts(); } else toast('No valid lines found');
 }
-
-/* ---------- coupons ---------- */
-function vCoupons(){
-  const cps = gdLoad('gd_coupons', null) || [{code:'WELCOME10', type:'pct', val:10, active:true}];
-  $('#view').innerHTML = `<div class="card"><h3>Add Coupon</h3>
-   <div class="f3"><div class="fld"><label>Code</label><input id="cp-code" placeholder="e.g. SALE20"></div>
-   <div class="fld"><label>Type</label><select id="cp-type"><option value="pct">Percent %</option><option value="fixed">Fixed USD</option></select></div>
-   <div class="fld"><label>Value</label><input id="cp-val" type="number" step="0.01"></div></div>
-   <button class="btn gold" onclick="addCoupon()">Add coupon</button></div>
-  <div class="card"><h3>Coupons</h3><table><tr><th>Code</th><th>Discount</th><th>Active</th><th></th></tr>
-  ${cps.map((c,i)=>`<tr><td><b>${esc(c.code)}</b></td><td>${c.type==='pct'?c.val+'%':fmtUSD(c.val)}</td>
-   <td><span class="pill ${c.active?'g':'r'}">${c.active?'Active':'Off'}</span></td>
-   <td><button class="btn sm ghost" onclick="toggleCoupon(${i})">${c.active?'Disable':'Enable'}</button> <button class="btn sm red" onclick="delCoupon(${i})">Delete</button></td></tr>`).join('')}</table></div>`;
+async function resetCatalog(){
+  if (!confirm('Reset catalog to the built-in demo products? Your edits will be lost.')) return;
+  const ok = await gdDbReplaceCatalog(GD_PRODUCTS);
+  localStorage.removeItem('gd_products');
+  if (ok) { gdSetProductsCache(GD_PRODUCTS.slice()); toast('Catalog reset'); }
+  else toast('Database unreachable — catalog reset locally only');
+  vProducts();
 }
-const getCoupons = () => gdLoad('gd_coupons', null) || [{code:'WELCOME10', type:'pct', val:10, active:true}];
-function addCoupon(){
-  const code = $('#cp-code').value.trim().toUpperCase(), val = parseFloat($('#cp-val').value);
-  if (!code || isNaN(val)) { toast('Code and value required'); return; }
-  const cps = getCoupons(); cps.push({code, type: $('#cp-type').value, val, active: true});
-  gdSave('gd_coupons', cps); vCoupons(); toast('Coupon added');
-}
-function toggleCoupon(i){ const cps = getCoupons(); cps[i].active = !cps[i].active; gdSave('gd_coupons', cps); vCoupons(); }
-function delCoupon(i){ const cps = getCoupons(); cps.splice(i,1); gdSave('gd_coupons', cps); vCoupons(); }
 
 /* ---------- settings ---------- */
 function vSettings(){
@@ -236,7 +245,7 @@ function vSettings(){
   <div class="card"><h3>Integrations — status</h3>
   <table><tr><th>Service</th><th>Status</th><th>What is needed</th></tr>
   <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account — save the API key in the CJ card under Settings. Then product import, order push and tracking sync can be switched on.</td></tr>
-  <tr><td>Supabase (database + auth)</td><td><span class="pill y">Local demo mode</span></td><td>Create a Supabase project in a new Free organization, then data moves from this browser to the cloud DB.</td></tr>
+  <tr><td>Supabase (database)</td><td><span class="pill g">Connected</span></td><td>Project "globaldrop" — products, orders, reviews and store settings sync to the cloud DB; this browser keeps a local fallback copy.</td></tr>
   <tr><td>Card payments</td><td><span class="pill y">Not connected</span></td><td>Payment provider account eligible for the business country (e.g. Whop/Stripe where supported).</td></tr>
   <tr><td>Exchange rates</td><td><span class="pill g">Live</span></td><td>open.er-api.com free rates, cached 12 hours, static fallback included.</td></tr></table></div>
   <div class="card"><h3>CJ Dropshipping — Your Supplier Account</h3>
@@ -250,7 +259,9 @@ function vSettings(){
 }
 function saveSettings(){
   const cur = gdSettings();
-  gdSave('gd_settings', {name: $('#st-name').value.trim() || 'GlobalDrop', tagline: $('#st-tag').value, announcement: $('#st-ann').value, commissionPct: cur.commissionPct, supportEmail: $('#st-email').value, whatsapp: $('#st-wa').value, cjEmail: cur.cjEmail || '', cjKey: cur.cjKey || ''});
+  const display = {name: $('#st-name').value.trim() || 'GlobalDrop', tagline: $('#st-tag').value, announcement: $('#st-ann').value, commissionPct: cur.commissionPct, supportEmail: $('#st-email').value, whatsapp: $('#st-wa').value};
+  gdSave('gd_settings', Object.assign({}, display, {cjEmail: cur.cjEmail || '', cjKey: cur.cjKey || ''}));
+  gdDbSaveStoreSettings(display); /* cloud sync — display fields ONLY; cjEmail/cjKey never leave this browser */
   toast('Settings saved');
 }
 function saveCj(){
@@ -258,6 +269,19 @@ function saveCj(){
   gdSave('gd_settings', Object.assign({}, cur, {cjEmail: $('#st-cjemail').value.trim(), cjKey: $('#st-cjkey').value.trim()}));
   toast('CJ connection saved'); vSettings();
 }
+
+/* Cloud data refresh: re-render the open tab when DB data arrives —
+   but never while the admin is typing in a form. */
+window.addEventListener('gd:data', e => {
+  if ($('#panel').classList.contains('hidden')) return;
+  const ae = document.activeElement;
+  if (ae && $('#view').contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return;
+  const k = e.detail && e.detail.kind;
+  if (k === 'products' && curTab === 'products') vProducts();
+  else if (k === 'settings' && curTab === 'settings') vSettings();
+  else if (k === 'orders' && (curTab === 'orders' || curTab === 'overview')) show(curTab);
+  else if (k === 'reviews' && curTab === 'overview') vOverview();
+});
 </script>
 </body>
 </html>
