@@ -67,12 +67,12 @@ const pin = () => gdLoad('gd_admin_pin','1234');
 function tryPin(){ if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
 $('#pinIn').addEventListener('keydown', e => { if (e.key==='Enter') tryPin(); });
 
-const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['settings','⚙️ Settings']];
+const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['stats','📈 Stats'],['settings','⚙️ Settings']];
 let curTab = 'overview';
 function show(tab){
   curTab = tab;
   $('#tabs').innerHTML = TABS.map(([k,l]) => `<button class="tab ${k===tab?'on':''}" onclick="show('${k}')">${l}</button>`).join('');
-  ({overview:vOverview, products:vProducts, orders:vOrders, settings:vSettings})[tab]();
+  ({overview:vOverview, products:vProducts, orders:vOrders, stats:vStats, settings:vSettings})[tab]();
 }
 const orders = () => gdAllOrdersMerged();
 let __ordersRefreshAt = 0;
@@ -163,6 +163,138 @@ async function cjPushOrder(id){
     cjStatus(stSel, res.error || 'CJ push failed.', false);
     btn.disabled = false; btn.textContent = oldText;
   }
+}
+
+/* ---------- live stats ---------- */
+/* Owner timezone for every day boundary below: Asia/Karachi (UTC+5 all year). */
+const GD_PKT_OFF = 5 * 3600 * 1000;
+function gdPktParts(ts){
+  const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Karachi', year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(new Date(ts));
+  const g = k => +(((parts.find(x => x.type === k) || {}).value) || 0);
+  return {y:g('year'), m:g('month'), d:g('day')};
+}
+const gdPad2 = n => String(n).padStart(2, '0');
+function gdDayStrPkt(ts){ const p = gdPktParts(ts); return p.y + '-' + gdPad2(p.m) + '-' + gdPad2(p.d); }
+function gdDayStartPkt(ts){ const p = gdPktParts(ts); return Date.UTC(p.y, p.m - 1, p.d) - GD_PKT_OFF; }
+/* Row counter via PostgREST Content-Range — returns null when the table is
+   missing/unreachable so the Stats view can degrade gracefully. */
+async function gdCount(path){
+  try {
+    const r = await fetch(GD_SB + path, {headers:{'apikey':GD_SB_KEY, 'Authorization':'Bearer ' + GD_SB_KEY, 'Prefer':'count=exact', 'Range-Unit':'items', 'Range':'0-0'}});
+    if (!r.ok) return null;
+    const n = parseInt(((r.headers.get('content-range') || '').split('/')[1] || ''), 10);
+    return isNaN(n) ? null : n;
+  } catch(e){ return null; }
+}
+let __statsTimer = null;
+async function vStats(){
+  $('#view').innerHTML = '<div class="card"><h3>📈 Live Stats</h3><p class="hint" style="margin-top:6px">Loading…</p></div>';
+  if (!__statsTimer) __statsTimer = setInterval(() => { if (curTab === 'stats' && !document.hidden) vStats(); }, 30000);
+
+  const nowMs = Date.now();
+  const t0 = gdDayStartPkt(nowMs);                    /* today 00:00 PKT */
+  const w0 = t0 - 6 * 86400000;                       /* last 7 days */
+  const d30 = t0 - 29 * 86400000;                     /* last 30 days */
+  const mp = gdPktParts(nowMs);
+  const m0 = Date.UTC(mp.y, mp.m - 1, 1) - GD_PKT_OFF;
+  const y0 = Date.UTC(mp.y, 0, 1) - GD_PKT_OFF;
+  const todayStr = gdDayStrPkt(nowMs), d7Str = gdDayStrPkt(w0), d30Str = gdDayStrPkt(d30);
+
+  /* ----- viewers (visits/presence — null when the tables do not exist yet) ----- */
+  const [vRows, pRows, vTotal] = await Promise.all([
+    gdDb('visits?select=day,visitor&day=gte.' + d30Str + '&order=day.desc&limit=10000'),
+    gdDb('presence?select=visitor,seen_at&seen_at=gte.' + encodeURIComponent(new Date(nowMs - 120000).toISOString())),
+    gdCount('visits?select=day')
+  ]);
+  const viewersLive = Array.isArray(vRows) && Array.isArray(pRows) && vTotal !== null;
+  let online = 0, vToday = 0, vWeek = 0, vMonth = 0, vAll = 0;
+  if (viewersLive) {
+    online = pRows.length; vAll = vTotal; vMonth = vRows.length;
+    vRows.forEach(r => { if (r.day === todayStr) vToday++; if (r.day >= d7Str) vWeek++; });
+  }
+
+  /* ----- orders ----- */
+  await gdDbFetchOrders();
+  const os = orders();
+  const liveOs = os.filter(o => o.status !== 'Cancelled' && o.status !== 'Refunded');
+  const rates = await gdFetchRates();
+  const usd = o => (o.total || 0) / ((rates && rates[o.cur]) || GD_FALLBACK_RATES[o.cur] || 1);
+  const inP = (list, from) => list.filter(o => (o.at || 0) >= from);
+  const revP = from => inP(liveOs, from).reduce((a, o) => a + usd(o), 0);
+  const periods = [['Today', t0], ['Last 7 days', w0], ['This month', m0], ['This year', y0], ['All time', 0]];
+  const aovAll = liveOs.length ? liveOs.reduce((a, o) => a + usd(o), 0) / liveOs.length : 0;
+  const todayLive = inP(liveOs, t0);
+  const aovToday = todayLive.length ? todayLive.reduce((a, o) => a + usd(o), 0) / todayLive.length : 0;
+  const conv = vToday > 0 ? (inP(os, t0).length / vToday * 100).toFixed(1) + '%' : '—';
+
+  /* ----- paisa / CJ commission ----- */
+  const cjDone = os.filter(o => o.cjOrderId);
+  const cjCost = cjDone.reduce((a, o) => a + (o.cjAmount || 0), 0);
+  const cjRev = cjDone.reduce((a, o) => a + usd(o), 0);
+  const cjNoCost = cjDone.filter(o => o.cjAmount == null).length;
+  const cjPending = os.filter(o => !o.cjOrderId && (o.items || []).some(i => String(i.id || '').startsWith('cj_'))).length;
+
+  /* ----- extras ----- */
+  const topC = {}; os.forEach(o => { topC[o.country] = (topC[o.country] || 0) + 1; });
+  const topCountries = Object.entries(topC).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const qty = {}; os.forEach(o => (o.items || []).forEach(i => { const k = i.name || i.id || '—'; qty[k] = (qty[k] || 0) + (i.qty || 0); }));
+  const topProducts = Object.entries(qty).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const prods = gdProducts();
+  const lowStock = prods.filter(p => p.stock > 0 && p.stock < 10);
+  const outStock = prods.filter(p => p.stock <= 0).length;
+  const catC = {}; prods.forEach(p => (p.countries === 'ALL' ? ['ALL'] : (p.countries || [])).forEach(c => { catC[c] = (catC[c] || 0) + 1; }));
+  const catTop = Object.entries(catC).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const cName = c => c === 'ALL' ? 'All countries' : esc((gdCountry(c) || {}).name || c);
+  const rankList = (rows, fmt) => rows.length ? rows.map(([k, v], ix) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ix + 1}. ${fmt(k)}</span><b>${v}</b></div>`).join('') : '<p class="hint">No data yet.</p>';
+
+  $('#view').innerHTML = `
+  <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div><h3>📈 Live Stats</h3><p class="hint" style="margin-top:4px">Orders, viewers aur CJ ka paisa — sab live. Auto-refresh har 30 second. Last updated: ${new Date().toLocaleTimeString('en-GB')}</p></div>
+    <button class="btn gold" onclick="vStats()">↻ Refresh</button></div></div>
+
+  <h3 style="margin:2px 0 10px">👀 Viewers</h3>
+  ${viewersLive ? '' : '<p class="hint" style="margin-bottom:10px">viewer tracking abhi live nahi — tables lagte hi data ayega</p>'}
+  <div class="grid">
+    <div class="stat"><b style="color:var(--green)">● ${online}</b><small>Online now (last 2 minutes)</small></div>
+    <div class="stat"><b>${vToday}</b><small>Viewers today</small></div>
+    <div class="stat"><b>${vWeek}</b><small>Viewers — last 7 days</small></div>
+    <div class="stat"><b>${vMonth}</b><small>Viewers — last 30 days</small></div>
+    <div class="stat"><b>${vAll}</b><small>Total viewers (all time)</small></div>
+    <div class="stat"><b>${conv}</b><small>Conversion today (orders ÷ viewers)</small></div>
+  </div>
+
+  <div class="card" style="margin-top:14px"><h3>🧾 Orders &amp; Revenue</h3>
+  <div style="overflow-x:auto"><table><tr><th>Period</th><th>Orders</th><th>Revenue (≈ USD)</th></tr>
+  ${periods.map(([label, from]) => `<tr><td>${label}</td><td><b>${inP(os, from).length}</b></td><td><b>≈ ${fmtUSD(revP(from))}</b></td></tr>`).join('')}
+  </table></div>
+  <p class="hint" style="margin-top:8px">Revenue excludes cancelled/refunded orders. Non-USD orders are converted to USD at live exchange rates — is liye revenue takreeban (≈) hai.</p>
+  <div class="grid" style="margin-top:12px">
+    <div class="stat"><b>${fmtUSD(aovAll)}</b><small>Average order value — all time (≈ USD)</small></div>
+    <div class="stat"><b>${fmtUSD(aovToday)}</b><small>Average order value — today (≈ USD)</small></div>
+  </div></div>
+
+  <div class="card"><h3>💰 Paisa — CJ hisaab</h3>
+  <div class="grid" style="margin-top:10px">
+    <div class="stat"><b>${fmtUSD(cjCost)}</b><small>CJ ko diya — product + freight (${cjDone.length} CJ orders)</small></div>
+    <div class="stat"><b>≈ ${fmtUSD(cjRev)}</b><small>Un CJ orders ki revenue</small></div>
+    <div class="stat"><b>${fmtUSD(cjRev - cjCost)}</b><small>Mera munafa (sirf CJ orders)</small></div>
+    <div class="stat"><b>${cjPending}</b><small>CJ ko bhejna baqi (orders)</small></div>
+  </div>
+  <p class="hint" style="margin-top:8px">PK/local orders ka supplier kharcha system me nahi hota — is liye munafe ka hisaab sirf CJ orders par hai.${cjNoCost ? ' Note: ' + cjNoCost + ' CJ order(s) me CJ cost save nahi hai — un ka kharcha upar wale hisaab me shamil nahi.' : ''}</p></div>
+
+  <div class="f2" style="align-items:start">
+    <div class="card"><h3>🌍 Top countries — orders</h3>${rankList(topCountries, cName)}</div>
+    <div class="card"><h3>🏆 Top products — sold quantity</h3>${rankList(topProducts, k => esc(k))}</div>
+  </div>
+  <div class="f2" style="align-items:start">
+    <div class="card"><h3>⚠️ Stock alerts</h3>
+    <p style="margin:6px 0 4px"><b>${outStock}</b> products out of stock · <b>${lowStock.length}</b> low stock (sirf 1–9 bache)</p>
+    ${lowStock.length ? lowStock.slice(0, 10).map(p => `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><b>${p.stock} left</b></div>`).join('') : '<p class="hint">Koi low-stock product nahi hai.</p>'}</div>
+    <div class="card"><h3>📦 Catalog</h3>
+    <div class="stat" style="border:none;padding:4px 0 8px"><b>${prods.length}</b><small>Total products</small></div>
+    <p class="hint" style="margin-bottom:4px">Top countries by products:</p>
+    ${rankList(catTop, cName)}</div>
+  </div>`;
 }
 
 /* ---------- products ---------- */

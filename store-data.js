@@ -216,7 +216,7 @@ function gdRowToOrder(r){
     items:r.items || [], sub:gdNum(r.subtotal), disc:0, ship:gdNum(r.shipping), total:gdNum(r.total),
     cur:r.currency || 'USD', payment:r.payment || 'cod',
     status:(r.status === 'Pending' ? 'Placed' : (r.status || 'Placed')), tracking:c.tracking || '',
-    cjOrderId:c.cjOrderId || '', cjPaymentId:c.cjPaymentId || '' };
+    cjOrderId:c.cjOrderId || '', cjPaymentId:c.cjPaymentId || '', cjAmount:(c.cjAmount != null ? +c.cjAmount : null), cjLogistic:c.cjLogistic || '' };
 }
 function gdRowToReview(r){
   return { pid:r.product_id, name:r.name || '', stars:r.rating || 5, text:r.body || '', verified:!!r.verified,
