@@ -191,6 +191,11 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .hbtn span.lbl{display:none}
 }
 .btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
+.sheet.qv{max-width:780px;position:relative}
+.qvgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.qvgrid>div:first-child img{width:100%;height:100%;max-height:340px;object-fit:cover;border-radius:12px}
+.qvX{position:absolute;top:10px;right:12px;background:#fff;border:1px solid #E3DDD0;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:15px;z-index:2}
+@media(max-width:640px){.qvgrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -242,6 +247,10 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <button class="btn ghost" style="margin-top:14px;width:100%" onclick="closeModal('ctryModal')">Close</button>
 </div></div>
 
+<div class="modal" id="qvModal"><div class="sheet qv">
+  <button class="qvX" onclick="closeModal('qvModal')" aria-label="Close">✕</button>
+  <div id="qvBody"></div>
+</div></div>
 <div id="toast"></div>
 <script src="store-data.js"></script>
 <script>
@@ -322,10 +331,10 @@ function cardHTML(p){
   const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
   const wished = S.wish.includes(p.id);
   return `<div class="pcard">
-    <a class="im" href="#/product/${p.id}">${imgTag(p)}</a>
+    <a class="im" href="#" onclick="openQV('${p.id}');return false">${imgTag(p)}</a>
     <div class="bd">
       <div class="meta"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL':p.supplier==='SELLER'?'LOCAL SELLER':'CJ DROPSHIPPING'}</span>${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
-      <a href="#/product/${p.id}"><h3>${esc(p.name)}</h3></a>
+      <a href="#" onclick="openQV('${p.id}');return false"><h3>${esc(p.name)}</h3></a>
       <div class="price">${off?`<s>${money(p.price)}</s>`:''}${money(effPrice(p))}${off?`<span class="off">-${off}%</span>`:''}</div>
       <div class="ship">🚚 ${gdDeliveryDays(p, S.country)} · within ${esc(gdCountry(S.country).name)}</div>
       <div class="acts">
@@ -531,6 +540,39 @@ function pdpAdd(buy){
   addToCart(id, pdpSel.color, pdpSel.size, pdpSel.qty);
   if (buy) location.hash = '#/checkout';
 }
+/* ---------- quick view popup ---------- */
+let qvSel = {id:null, color:'', size:'', qty:1};
+function openQV(id){
+  const p = PROD(id); if (!p) return;
+  qvSel = {id, color:(p.colors && p.colors[0]) || '', size:(p.sizes && p.sizes[0]) || '', qty:1};
+  const avail = inCountry(p);
+  const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
+  $('#qvBody').innerHTML = `
+  <div class="qvgrid">
+    <div>${imgTag(p)}</div>
+    <div>
+      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL':'CJ DROPSHIPPING'}</span>${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
+      <h3 style="font-size:20px;line-height:1.25">${esc(p.name)}</h3>
+      <div class="price" style="font-size:20px;margin:8px 0">${off?`<s>${money(p.price)}</s>`:''}${money(effPrice(p))}${off?`<span class="off">-${off}%</span>`:''}</div>
+      <p style="color:var(--mut);font-size:13.5px">${esc((p.desc || '').slice(0, 150))}</p>
+      ${(p.colors && p.colors.length) ? `<div class="optrow"><b>Color: <span id="qvColor">${esc(qvSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===qvSel.color?'on':''}" onclick="qvPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      ${(p.sizes && p.sizes.length) ? `<div class="optrow"><b>Size: <span id="qvSize">${esc(qvSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===qvSel.size?'on':''}" onclick="qvPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="qvQty(-1)">−</button><input id="qvQtyIn" value="1" readonly><button onclick="qvQty(1)">+</button></span></div>
+      ${!avail?`<div style="background:#FDECEC;border:1px solid #F0B4B4;color:#8F1D1D;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13.5px">🚫 <b>Not available in ${esc(gdCountry(S.country).name)}</b> — this product is listed for ${listedFor(p)} only.</div>`:''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <button class="btn gold" style="flex:1;min-width:140px" onclick="qvAdd(false)" ${(!avail||p.stock<=0)?'disabled':''}>🛒 Add to Cart</button>
+        <button class="btn" style="flex:1;min-width:140px" onclick="qvAdd(true)" ${(!avail||p.stock<=0)?'disabled':''}>Order Now</button>
+      </div>
+      <div style="font-size:12.5px;color:var(--mut);margin-top:12px">🚚 ${esc(gdDeliveryDays(p, S.country))} · within ${esc(gdCountry(S.country).name)}<br>🌍 Listed for: ${listedFor(p)}</div>
+      <div style="margin-top:10px"><a href="#/product/${p.id}" onclick="closeModal('qvModal')" style="color:var(--gold);font-weight:700">View full details →</a></div>
+    </div>
+  </div>`;
+  openModal('qvModal');
+}
+function qvPick(kind, val, el){ qvSel[kind] = val; el.parentElement.querySelectorAll('.opt').forEach(b => b.classList.remove('on')); el.classList.add('on'); const lbl = kind === 'color' ? $('#qvColor') : $('#qvSize'); if (lbl) lbl.textContent = val; }
+function qvQty(d){ qvSel.qty = Math.max(1, Math.min(99, qvSel.qty + d)); $('#qvQtyIn').value = qvSel.qty; }
+function qvAdd(buy){ addToCart(qvSel.id, qvSel.color, qvSel.size, qvSel.qty); closeModal('qvModal'); if (buy) location.hash = '#/checkout'; }
+
 function submitReview(pid){
   const name = $('#revName').value.trim(), email = $('#revEmail').value.trim().toLowerCase();
   const text = $('#revText').value.trim();
