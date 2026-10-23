@@ -299,21 +299,55 @@ async function vStats(){
 
 /* ---------- products ---------- */
 let editId = null;
+/* Product-form category tree: Category (L1 slug) → Subcategory (L2 name) →
+   Leaf (L3 name), driven by GD_CAT_TREE (store-data.js). Values that are not
+   in the tree (older/manual products) are kept as extra options so editing
+   never silently loses them. */
+function pfTreeCat(slug){ return (typeof GD_CAT_TREE !== 'undefined' ? GD_CAT_TREE : []).find(t => t.slug === slug) || null; }
+function pfLeafNames(catSlug, subName){
+  const c = pfTreeCat(catSlug); if (!c) return [];
+  const s = c.subs.find(x => x.name === subName);
+  return s ? s.leaves.map(l => l.name) : [];
+}
+function pfSetSel(sel, values, cur, emptyLabel){
+  if (!sel) return;
+  let h = emptyLabel !== undefined ? `<option value="">${emptyLabel}</option>` : '';
+  h += values.map(v => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  if (cur && !values.includes(cur)) h += `<option value="${esc(cur)}" selected>${esc(cur)}</option>`;
+  sel.innerHTML = h;
+  sel.value = cur || '';
+}
+function pfSyncForm(curSub, curLeaf){
+  const catSel = $('#pf-cat'), subSel = $('#pf-sub'), leafSel = $('#pf-leaf');
+  if (!catSel || !subSel) return;
+  const cat = pfTreeCat(catSel.value);
+  const subNames = cat ? cat.subs.map(s => s.name) : [];
+  let sub = curSub !== undefined && curSub !== null ? curSub : subSel.value;
+  if (!sub) sub = subNames[0] || '';
+  pfSetSel(subSel, subNames, sub);
+  pfSetSel(leafSel, pfLeafNames(catSel.value, subSel.value), curLeaf !== undefined && curLeaf !== null ? curLeaf : '', '(none)');
+}
+function pfSyncLeaf(){
+  const leafSel = $('#pf-leaf'); if (!leafSel) return;
+  const names = pfLeafNames($('#pf-cat').value, $('#pf-sub').value);
+  pfSetSel(leafSel, names, names.includes(leafSel.value) ? leafSel.value : '', '(none)');
+}
 function vProducts(){
   const prods = gdProducts(), cats = gdCategories();
   $('#view').innerHTML = `
   <div class="card"><h3>${editId?'Edit Product':'Add Product'}</h3>
    <div class="f3">
     <div class="fld"><label>Product name *</label><input id="pf-name"></div>
-    <div class="fld"><label>Category</label><select id="pf-cat">${cats.map(c=>`<option value="${c.slug}">${esc(c.name)}</option>`).join('')}</select></div>
-    <div class="fld"><label>Subcategory</label><input id="pf-sub" placeholder="e.g. Headphones and Earbuds"></div>
+    <div class="fld"><label>Category</label><select id="pf-cat" onchange="pfSyncForm('','')">${cats.map(c=>`<option value="${c.slug}">${esc(c.name)}</option>`).join('')}</select></div>
+    <div class="fld"><label>Subcategory</label><select id="pf-sub" onchange="pfSyncLeaf()"></select></div>
    </div>
    <div class="f3">
+    <div class="fld"><label>Leaf (sub-subcategory)</label><select id="pf-leaf"></select></div>
     <div class="fld"><label>Price (USD) *</label><input id="pf-price" type="number" step="0.01"></div>
     <div class="fld"><label>Sale price (USD)</label><input id="pf-sale" type="number" step="0.01"></div>
-    <div class="fld"><label>Stock</label><input id="pf-stock" type="number" value="50"></div>
    </div>
-   <div class="f2">
+   <div class="f3">
+    <div class="fld"><label>Stock</label><input id="pf-stock" type="number" value="50"></div>
     <div class="fld"><label>Image URL</label><input id="pf-img" placeholder="https://…"></div>
     <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><select id="pf-sup" style="width:130px"><option value="CJ">CJ</option><option value="PK">PK Local</option></select><input id="pf-sku" placeholder="Supplier SKU"></div></div>
    </div>
@@ -333,17 +367,17 @@ function vProducts(){
    <button class="btn" style="margin-top:9px" onclick="importCSV()">Import CSV</button></div>
   <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
    ${prods.map(p=>`<tr><td><img class="th" src="${esc(p.img)}" onerror="this.style.visibility='hidden'"></td>
-   <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}</td>
+   <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}${p.leaf?`<br><small class="hint">${esc(p.leaf)}</small>`:''}</td>
    <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(p.supplier)}</td>
    <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>
    <td style="white-space:nowrap"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button> <button class="btn sm red" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}
    </table></div>
    <button class="btn ghost sm" style="margin-top:12px" onclick="resetCatalog()">Reset to demo catalog</button></div>`;
-  if (editId) fillForm(editId);
+  if (editId) fillForm(editId); else pfSyncForm('', '');
 }
 function fillForm(id){
   const p = gdProducts().find(x=>x.id===id); if (!p) return;
-  $('#pf-name').value=p.name; $('#pf-cat').value=p.cat; $('#pf-sub').value=p.sub||''; $('#pf-price').value=p.price;
+  $('#pf-name').value=p.name; $('#pf-cat').value=p.cat; pfSyncForm(p.sub||'', p.leaf||''); $('#pf-price').value=p.price;
   $('#pf-sale').value=p.sale||''; $('#pf-stock').value=p.stock; $('#pf-img').value=p.img||''; $('#pf-sup').value=p.supplier||'CJ';
   $('#pf-sku').value=p.sku||''; $('#pf-countries').value = (p.countries && p.countries !== 'ALL' && p.countries[0]) || 'PK';
   $('#pf-variants').value = ((p.colors||[]).join(',')||'') + ((p.sizes&&p.sizes.length)?' | '+p.sizes.join(','):'');
@@ -356,7 +390,7 @@ function saveProduct(){
   if (!name || isNaN(price)) { toast('Name and price are required'); return; }
   const vparts = $('#pf-variants').value.split('|');
   const data = {
-    name, cat: $('#pf-cat').value, sub: $('#pf-sub').value.trim() || 'General',
+    name, cat: $('#pf-cat').value, sub: $('#pf-sub').value || 'General', leaf: $('#pf-leaf').value || '',
     price, sale: parseFloat($('#pf-sale').value) || null, stock: parseInt($('#pf-stock').value) || 0,
     img: $('#pf-img').value.trim() || 'https://picsum.photos/seed/'+Date.now()+'/800/800',
     supplier: $('#pf-sup').value, sku: $('#pf-sku').value.trim(),

@@ -321,7 +321,7 @@ sIn.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(sIn.value
 sIn.addEventListener('input', () => {
   const q = sIn.value.trim().toLowerCase();
   if (q.length < 2) { sBox.style.display = 'none'; return; }
-  const hits = P().filter(p => inCountry(p) && (p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (CAT(p.cat)||{}).name?.toLowerCase().includes(q))).slice(0,6);
+  const hits = P().filter(p => inCountry(p) && (p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (p.leaf||'').toLowerCase().includes(q) || (CAT(p.cat)||{}).name?.toLowerCase().includes(q))).slice(0,6);
   sBox.innerHTML = hits.length ? hits.map(p => `<a href="#/product/${p.id}">${imgTag(p)}<span>${esc(p.name)}</span><b style="margin-left:auto">${money(effPrice(p))}</b></a>`).join('') : '<a>No matches — press Search to browse</a>';
   sBox.style.display = 'block';
 });
@@ -388,7 +388,7 @@ function homeView(){
   ${feat.length?`<div class="sec"><h2>⭐ Trending Products</h2><a href="#/shop">Shop all →</a></div><div class="pgrid">${feat.map(cardHTML).join('')}</div>`:''}
   <div class="banner2">
     <a class="promo" href="#/shop?sale=1" style="background-image:url('https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1000&q=80')"><h3>Sale &amp; Offers</h3><p>Genuine discounts on selected products — while stock lasts.</p></a>
-    <a class="promo" href="#/cat/fashion" style="background-image:url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80')"><h3>Pakistani Fashion, Local Prices</h3><p>Premium cotton clothing from local sellers — delivered in 2–4 days inside Pakistan.</p></a>
+    <a class="promo" href="#/cat/women-s-clothing" style="background-image:url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80')"><h3>New Season Styles</h3><p>Shop women's clothing and more — delivered to your door.</p></a>
   </div>
   ${news.length?`<div class="sec"><h2>🆕 New Arrivals</h2><a href="#/shop?sort=new">View all →</a></div><div class="pgrid">${news.map(cardHTML).join('')}</div>`:''}
   ${sale.length?`<div class="sec"><h2>🏷️ Bestselling Deals</h2></div><div class="pgrid">${sale.map(cardHTML).join('')}</div>`:''}
@@ -402,14 +402,16 @@ function shopView(params){
   const q = (params.get('q') || '').toLowerCase();
   const catF = params.get('cat') || '';
   const subF = params.get('sub') || '';
+  const leafF = params.get('leaf') || '';
   const saleOnly = params.get('sale') === '1';
   const sort = params.get('sort') || 'pop';
   const supF = params.get('sup') || '';
   const minP = parseFloat(params.get('min') || ''), maxP = parseFloat(params.get('max') || '');
   let list = P().filter(inCountry);
-  if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (p.leaf||'').toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
   if (catF) list = list.filter(p => p.cat === catF);
   if (subF) list = list.filter(p => p.sub === subF);
+  if (leafF) list = list.filter(p => (p.leaf || '') === leafF);
   if (saleOnly) list = list.filter(p => p.sale && p.sale < p.price);
   if (supF) list = list.filter(p => p.supplier === supF);
   if (!isNaN(minP)) list = list.filter(p => effPrice(p) >= minP);
@@ -420,6 +422,17 @@ function shopView(params){
   else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
   const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : 'All Products');
   const catsAvail = gdCategories().map(ct => ({ct, n: P().filter(p=>p.cat===ct.slug && inCountry(p)).length})).filter(x=>x.n);
+  /* Leaf (L3) chips — shown when a category + subcategory are selected: the
+     distinct leaf values of the products actually in that cat+sub. */
+  let leafChips = '';
+  if (catF && subF) {
+    const leafNames = [...new Set(P().filter(p => p.cat === catF && p.sub === subF && inCountry(p) && p.leaf).map(p => p.leaf))].sort();
+    if (leafNames.length) {
+      const mkLeafHref = lf => { const pp = new URLSearchParams(params.toString()); if (lf) pp.set('leaf', lf); else pp.delete('leaf'); return '#/shop?' + pp.toString(); };
+      const chipStyle = on => `padding:7px 13px${on ? ';background:var(--ink);color:#fff' : ''}`;
+      leafChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><a class="pill" style="${chipStyle(!leafF)}" href="${mkLeafHref('')}">All</a>${leafNames.map(lf => `<a class="pill" style="${chipStyle(leafF === lf)}" href="${mkLeafHref(lf)}">${esc(lf)}</a>`).join('')}</div>`;
+    }
+  }
   $('#app').innerHTML = `
   <div class="crumbs"><a href="#/">Home</a> › ${catF?`<a href="#/shop">Shop</a> › ${title}`:title}</div>
   <div class="layout">
@@ -446,6 +459,7 @@ function shopView(params){
         <option value="high" ${sort==='high'?'selected':''}>Price: High to Low</option>
       </select></div>
       ${subF?`<p style="margin-bottom:8px"><span class="pill">${esc(subF)}</span> <a href="#/cat/${catF}" style="font-size:13px;color:var(--navy);font-weight:600">✕ clear</a></p>`:''}
+      ${leafChips}
       ${list.length ? `<div class="pgrid">${list.map(cardHTML).join('')}</div>` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`}
     </div>
   </div>`;
@@ -490,7 +504,7 @@ function productView(id){
   const revs = gdReviewsFor(id);
   const avail = inCountry(p);
   $('#app').innerHTML = `
-  <div class="crumbs"><a href="#/">Home</a> › <a href="#/cat/${ct.slug}">${esc(ct.name)}</a> › ${esc(p.sub)} › ${esc(p.name)}</div>
+  <div class="crumbs"><a href="#/">Home</a> › <a href="#/cat/${ct.slug}">${esc(ct.name)}</a> › ${esc(p.sub)}${p.leaf?` › ${esc(p.leaf)}`:''} › ${esc(p.name)}</div>
   <div class="pdp">
     <div class="gal">${imgTag(p)}</div>
     <div>
