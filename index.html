@@ -261,6 +261,7 @@ const PROD = id => P().find(p => p.id === id);
 const money = usd => gdFmt(usd, S.cur, S.rates);
 const effPrice = p => (p.sale && p.sale < p.price) ? p.sale : p.price;
 const inCountry = p => gdAvailable(p, S.country);
+function listedFor(p){ if (!p || p.countries === 'ALL') return 'all countries'; const ns = (p.countries || []).map(c => gdCountry(c).name); return ns.length > 4 ? ns.slice(0, 4).join(', ') + ' +' + (ns.length - 4) + ' more' : ns.join(', '); }
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.style.display='block'; clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 2400); }
 function openModal(id){ $('#'+id).classList.add('open'); }
 function closeModal(id){ $('#'+id).classList.remove('open'); }
@@ -343,7 +344,7 @@ function toggleWish(id, el){
 }
 function addToCart(id, color, size, qty){
   const p = PROD(id); if (!p || p.stock <= 0) return;
-  if (!gdAvailable(p, S.country)) { toast('This product is not available in ' + gdCountry(S.country).name); return; }
+  if (!gdAvailable(p, S.country)) { toast('Not available in ' + gdCountry(S.country).name + ' — listed for ' + listedFor(p)); return; }
   color = color ?? (p.colors && p.colors[0]) ?? ''; size = size ?? (p.sizes && p.sizes[0]) ?? ''; qty = qty || 1;
   const key = i => i.id===id && i.color===color && i.size===size;
   const ex = S.cart.find(key);
@@ -491,14 +492,15 @@ function productView(id){
       ${(p.colors&&p.colors.length)?`<div class="optrow"><b>Color: <span id="selColor">${esc(pdpSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===pdpSel.color?'on':''}" onclick="pdpPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
       ${(p.sizes&&p.sizes.length)?`<div class="optrow"><b>Size: <span id="selSize">${esc(pdpSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===pdpSel.size?'on':''}" onclick="pdpPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
       <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="pdpQty(-1)">−</button><input id="pdpQtyIn" value="1" readonly><button onclick="pdpQty(1)">+</button></span></div>
-      ${!avail?`<div style="background:#FDECEC;border:1px solid #F0B4B4;color:#8F1D1D;border-radius:10px;padding:10px 12px;margin-top:14px;font-size:13.5px">🚫 <b>Not available in ${esc(gdCountry(S.country).name)}</b> — this product is listed for other countries only. To buy it, change your country from the top bar.</div>`:''}
+      ${!avail?`<div style="background:#FDECEC;border:1px solid #F0B4B4;color:#8F1D1D;border-radius:10px;padding:10px 12px;margin-top:14px;font-size:13.5px">🚫 <b>Not available in ${esc(gdCountry(S.country).name)}</b> — this product is listed for ${listedFor(p)} only. To buy it, change your country from the top bar.</div>`:''}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
         <button class="btn gold" style="flex:1;min-width:150px" onclick="pdpAdd(false)" ${(!avail||p.stock<=0)?'disabled':''}>🛒 Add to Cart</button>
         <button class="btn" style="flex:1;min-width:150px" onclick="pdpAdd(true)" ${(!avail||p.stock<=0)?'disabled':''}>Order Now</button>
         <button class="iconbtn ${S.wish.includes(p.id)?'on':''}" onclick="toggleWish('${p.id}',this);this.classList.toggle('on')">❤️</button>
       </div>
       <div class="infobox">
-        ${avail?`<div>🚚 <span><b>Delivery within ${esc(gdCountry(S.country).name)}:</b> estimated ${gdDeliveryDays(p, S.country)}</span></div>`:`<div>🚫 <span><b>Not delivered to ${esc(gdCountry(S.country).name)}</b> — this product is listed for other countries only.</span></div>`}
+        ${avail?`<div>🚚 <span><b>Delivery within ${esc(gdCountry(S.country).name)}:</b> estimated ${gdDeliveryDays(p, S.country)}</span></div>`:`<div>🚫 <span><b>Not delivered to ${esc(gdCountry(S.country).name)}</b> — this product is listed for ${listedFor(p)} only.</span></div>`}
+        <div>🌍 <span><b>Listed for:</b> ${listedFor(p)}</span></div>
         <div>↩️ <span><b>Returns:</b> within 7 days of delivery for faulty or wrong items — see Returns policy</span></div>
         <div>🔒 <span><b>Buyer protection:</b> full refund if your order never arrives</span></div>
         <div>🏷️ <span><b>Sold by:</b> ${p.supplier==='PK'?'Pakistani local supplier (via GlobalDrop)':p.supplier==='SELLER'?'Independent seller on GlobalDrop':'CJ Dropshipping (via GlobalDrop)'}</span></div>
