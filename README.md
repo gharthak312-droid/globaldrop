@@ -37,8 +37,7 @@ browser data layer today, Supabase backend at production setup.
    devices (guest checkout by design — no customer accounts to migrate).
 2. **CJ Dropshipping API**: owner creates a CJ account → API key → switch on
    product import, stock/price sync, automatic order forwarding + tracking sync.
-3. **Payments**: connect an eligible provider for card checkout (e.g. Whop /
-   PayPal where supported) — card buttons stay clearly disabled until then;
+3. **Payments**: connect an eligible provider for card checkout (e.g. Whop where supported) — card buttons stay clearly disabled until then;
    COD (Pakistan) works from day one.
 4. **Domain + GitHub repo**: owner creates the repo (like TopRankSM/GharTasalli),
    agent pushes, GitHub Pages goes live; then update sitemap/canonical domain
