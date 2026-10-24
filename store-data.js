@@ -160,8 +160,9 @@ function gdShipping(countryCode, subtotalUSD){
   return subtotalUSD >= 75 ? 0 : 6.99;
 }
 function gdDeliveryDays(p, countryCode){
-  if (p.supplier === 'PK' && countryCode === 'PK') return '2–4 working days';
-  if (p.supplier === 'PK') return '5–9 working days';
+  const sup = p.supplier === 'Markaz' ? 'PK' : p.supplier; /* old CSV safety net: Markaz rows count as Pakistani local */
+  if (sup === 'PK' && countryCode === 'PK') return '2–4 working days';
+  if (sup === 'PK') return '5–9 working days';
   return (p.days ? p.days[0] : 7) + '–' + (p.days ? p.days[1] : 12) + ' working days';
 }
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GlobalDrop — Shop the World, Delivered to Your Door</title>
-<meta name="description" content="GlobalDrop is an international dropshipping store: electronics, fashion, home, beauty and more — with country-specific delivery, local-currency prices and trusted suppliers including CJ Dropshipping and selected Pakistani suppliers.">
+<meta name="description" content="GlobalDrop is an international dropshipping store: electronics, fashion, home, beauty and more — with country-specific delivery, local-currency prices and products from verified international suppliers and selected Pakistani suppliers.">
 <meta property="og:title" content="GlobalDrop — Shop the World">
 <meta property="og:description" content="International shopping with country-specific products, local currency prices and reliable delivery.">
 <meta property="og:type" content="website">
@@ -257,6 +257,48 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .pagebox{padding:19px}
  footer .cols{gap:18px;padding:30px 0 20px}
 }
+/* ---- mobile hamburger menu (≤900px only; desktop unchanged) ---- */
+.menubtn{display:none}
+.menuoverlay{display:none}
+.menudrawer{display:none}
+@media(max-width:900px){
+ .menubtn{display:flex;align-items:center;justify-content:center;width:42px;height:42px;min-width:42px;border:1.5px solid var(--line);background:#fff;border-radius:11px;font-size:21px;line-height:1;cursor:pointer;color:var(--ink)}
+ .menuoverlay{position:fixed;inset:0;background:rgba(8,14,28,.55);z-index:140;display:none}
+ .menuoverlay.open{display:block}
+ .menudrawer{position:fixed;top:0;left:0;bottom:0;width:min(300px,86vw);background:#fff;z-index:150;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;display:block;box-shadow:16px 0 40px rgba(0,0,0,.28)}
+ .menudrawer.open{transform:translateX(0)}
+ .md-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+ .md-top .logo{font-size:20px}
+ .md-x{width:40px;height:40px;border:1.5px solid var(--line);background:#fff;border-radius:50%;font-size:16px;cursor:pointer;line-height:1}
+ .md-body{padding:8px 0 24px}
+ .md-link{display:block;padding:11px 16px;font-size:14.5px;font-weight:500;color:var(--ink)}
+ .md-link:active{background:#f4f1ea}
+ .md-sec{padding:16px 16px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+ .md-hr{border:none;border-top:1px solid var(--line);margin:10px 0}
+ .md-row{display:flex;align-items:stretch}
+ .md-row .md-link{flex:1}
+ .md-chev{width:44px;min-width:44px;border:none;background:transparent;font-size:15px;cursor:pointer;color:var(--mut);transition:transform .18s}
+ .md-chev.open{transform:rotate(90deg)}
+ .md-l1{font-weight:700}
+ .md-sub{display:none}
+ .md-sub.open{display:block}
+ .md-l2row .md-link{padding-left:32px;font-size:13.5px}
+ .md-l3{padding:9px 16px 9px 48px;font-size:13px;color:#39415a}
+}
+/* ---- subcategory / leaf card grids (category + subcategory pages) ---- */
+.subsec{margin:4px 0 18px}
+.subsec h3{font-size:17px;margin:2px 0 10px}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.subcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 12px;text-align:center;transition:.18s;display:block}
+.subcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(10,20,40,.09);border-color:var(--gold)}
+.subcard b{font-size:14px;display:block;line-height:1.3}
+.subcard small{color:var(--mut);font-size:12px}
+@media(max-width:640px){
+ .subgrid{grid-template-columns:repeat(2,1fr);gap:10px}
+ .subcard{padding:13px 8px;border-radius:12px}
+ .subcard:hover{transform:none}
+ .subcard b{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -264,6 +306,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
 <header class="site">
   <div class="wrap">
     <div class="hrow">
+      <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
       <a class="logo" href="#/">Global<span>Drop</span></a>
       <div class="searchbar">
         <input id="searchInput" type="text" placeholder="Search products, categories, brands…" autocomplete="off">
@@ -279,13 +322,42 @@ table.spec td:first-child{color:var(--mut);width:170px}
   </div>
   <nav class="cats"><div class="wrap" id="catNav"></div></nav>
 </header>
+<div class="menuoverlay" id="menuOverlay"></div>
+<aside class="menudrawer" id="menuDrawer" aria-label="Menu">
+  <div class="md-top"><span class="logo">Global<span>Drop</span></span><button class="md-x" id="menuClose" aria-label="Close menu">✕</button></div>
+  <div class="md-body">
+    <a class="md-link" href="#/">🏠 Home</a>
+    <a class="md-link" href="#/shop">🛍️ All Products</a>
+    <div class="md-sec">All Categories</div>
+    <div id="menuTree"></div>
+    <div class="md-sec">Suppliers</div>
+    <div id="menuSup"></div>
+    <hr class="md-hr">
+    <a class="md-link" href="#/track">📦 Track Order</a>
+    <a class="md-link" href="#/wishlist">❤️ Wishlist</a>
+    <a class="md-link" href="#/cart">🛒 Cart</a>
+    <hr class="md-hr">
+    <div class="md-sec">Customer Care</div>
+    <a class="md-link" href="#/page/faq">FAQ</a>
+    <a class="md-link" href="#/page/shipping">Shipping &amp; Delivery</a>
+    <a class="md-link" href="#/page/returns">Returns &amp; Refunds</a>
+    <a class="md-link" href="#/page/payment">Payment Information</a>
+    <a class="md-link" href="#/page/contact">Contact Us</a>
+    <hr class="md-hr">
+    <div class="md-sec">Company</div>
+    <a class="md-link" href="#/page/about">About Us</a>
+    <a class="md-link" href="#/page/privacy">Privacy Policy</a>
+    <a class="md-link" href="#/page/terms">Terms &amp; Conditions</a>
+    <a class="md-link" href="#/page/cookies">Cookie Policy</a>
+  </div>
+</aside>
 <main class="wrap" id="app"></main>
 <footer>
   <div class="wrap">
     <div class="cols">
       <div>
         <div class="logo" style="color:#fff">Global<span>Drop</span></div>
-        <p style="font-size:13.5px;margin-top:10px;max-width:320px">International shopping from verified suppliers — including CJ Dropshipping and selected Pakistani suppliers. Country-specific products, local currency prices, doorstep delivery.</p>
+        <p style="font-size:13.5px;margin-top:10px;max-width:320px">International shopping from verified international suppliers and selected Pakistani suppliers. Country-specific products, local currency prices, doorstep delivery.</p>
         <div class="newsrow"><input id="newsEmail" type="email" placeholder="Email for offers"><button class="btn gold sm" id="newsBtn">Join</button></div>
         <small id="newsMsg" style="color:#8b95a9"></small>
       </div>
@@ -395,7 +467,7 @@ function cardHTML(p){
   return `<div class="pcard">
     <a class="im" href="#" onclick="openQV('${p.id}');return false">${imgTag(p)}</a>
     <div class="bd">
-      <div class="meta"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL':p.supplier==='SELLER'?'LOCAL SELLER':'CJ DROPSHIPPING'}</span>${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
+      <div class="meta">${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
       <a href="#" onclick="openQV('${p.id}');return false"><h3>${esc(p.name)}</h3></a>
       <div class="price">${off?`<s>${money(p.price)}</s>`:''}${money(effPrice(p))}${off?`<span class="off">-${off}%</span>`:''}</div>
       <div class="ship">🚚 ${gdDeliveryDays(p, S.country)} · within ${esc(gdCountry(S.country).name)}</div>
@@ -474,7 +546,7 @@ function shopView(params){
   if (subF) list = list.filter(p => p.sub === subF);
   if (leafF) list = list.filter(p => (p.leaf || '') === leafF);
   if (saleOnly) list = list.filter(p => p.sale && p.sale < p.price);
-  if (supF) list = list.filter(p => p.supplier === supF);
+  if (supF) list = list.filter(p => supKey(p.supplier) === supF);
   if (!isNaN(minP)) list = list.filter(p => effPrice(p) >= minP);
   if (!isNaN(maxP)) list = list.filter(p => effPrice(p) <= maxP);
   if (sort === 'low') list.sort((a,b)=>effPrice(a)-effPrice(b));
@@ -483,15 +555,23 @@ function shopView(params){
   else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
   const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : 'All Products');
   const catsAvail = gdCategories().map(ct => ({ct, n: P().filter(p=>p.cat===ct.slug && inCountry(p)).length})).filter(x=>x.n);
-  /* Leaf (L3) chips — shown when a category + subcategory are selected: the
-     distinct leaf values of the products actually in that cat+sub. */
+  /* Leaf (L3) browsing — when a category + subcategory are selected, the
+     distinct leaf values of the products actually in that cat+sub.
+     No leaf selected yet: a card grid ("Explore {sub}") with an "All" card.
+     Leaf selected: keep the small chips row (with the All/clear affordance). */
   let leafChips = '';
   if (catF && subF) {
     const leafNames = [...new Set(P().filter(p => p.cat === catF && p.sub === subF && inCountry(p) && p.leaf).map(p => p.leaf))].sort();
     if (leafNames.length) {
-      const mkLeafHref = lf => { const pp = new URLSearchParams(params.toString()); if (lf) pp.set('leaf', lf); else pp.delete('leaf'); return '#/shop?' + pp.toString(); };
-      const chipStyle = on => `padding:7px 13px${on ? ';background:var(--ink);color:#fff' : ''}`;
-      leafChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><a class="pill" style="${chipStyle(!leafF)}" href="${mkLeafHref('')}">All</a>${leafNames.map(lf => `<a class="pill" style="${chipStyle(leafF === lf)}" href="${mkLeafHref(lf)}">${esc(lf)}</a>`).join('')}</div>`;
+      if (!leafF) {
+        const allN = P().filter(p => p.cat === catF && p.sub === subF && inCountry(p)).length;
+        const leafCards = leafNames.map(lf => { const n = P().filter(p => p.cat === catF && p.sub === subF && p.leaf === lf && inCountry(p)).length; return `<a class="subcard" href="#/shop?cat=${catF}&sub=${encodeURIComponent(subF)}&leaf=${encodeURIComponent(lf)}"><b>${esc(lf)}</b><small>${n} products</small></a>`; }).join('');
+        leafChips = `<div class="subsec"><h3>Explore ${esc(subF)}</h3><div class="subgrid"><a class="subcard" href="#/shop?cat=${catF}&sub=${encodeURIComponent(subF)}"><b>All ${esc(subF)}</b><small>${allN} products</small></a>${leafCards}</div></div>`;
+      } else {
+        const mkLeafHref = lf => { const pp = new URLSearchParams(params.toString()); if (lf) pp.set('leaf', lf); else pp.delete('leaf'); return '#/shop?' + pp.toString(); };
+        const chipStyle = on => `padding:7px 13px${on ? ';background:var(--ink);color:#fff' : ''}`;
+        leafChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px"><a class="pill" style="${chipStyle(!leafF)}" href="${mkLeafHref('')}">All</a>${leafNames.map(lf => `<a class="pill" style="${chipStyle(leafF === lf)}" href="${mkLeafHref(lf)}">${esc(lf)}</a>`).join('')}</div>`;
+      }
     }
   }
   $('#app').innerHTML = `
@@ -503,8 +583,7 @@ function shopView(params){
       ${catsAvail.map(x=>`<label><input type="radio" name="fcat" ${catF===x.ct.slug?'checked':''} onchange="shopGo('cat','${x.ct.slug}')"> ${esc(x.ct.name)} (${x.n})</label>`).join('')}
       <h4>Supplier</h4>
       <label><input type="radio" name="fsup" ${!supF?'checked':''} onchange="shopGo('sup','')"> All suppliers</label>
-      <label><input type="radio" name="fsup" ${supF==='CJ'?'checked':''} onchange="shopGo('sup','CJ')"> CJ Dropshipping</label>
-      <label><input type="radio" name="fsup" ${supF==='PK'?'checked':''} onchange="shopGo('sup','PK')"> Pakistani local</label>
+      ${supList().map(v=>`<label><input type="radio" name="fsup" ${supF===v?'checked':''} onchange="shopGo('sup','${v}')"> ${esc(supLabel(v))}</label>`).join('')}
       <h4>Price (USD)</h4>
       <div class="f2"><input type="number" id="fMin" placeholder="Min" value="${isNaN(minP)?'':minP}"><input type="number" id="fMax" placeholder="Max" value="${isNaN(maxP)?'':maxP}"></div>
       <button class="btn ghost sm" style="margin-top:9px;width:100%" onclick="shopPrice()">Apply price</button>
@@ -548,7 +627,7 @@ function categoryView(slug, params){
   const p2 = new URLSearchParams(params.toString()); p2.set('cat', slug);
   shopView(p2);
   const app = $('#app');
-  const subbar = subs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px">${subs.map(x=>`<a class="pill" style="padding:7px 13px" href="#/shop?cat=${slug}&sub=${encodeURIComponent(x.s)}">${esc(x.s)} (${x.n})</a>`).join('')}</div>` : '';
+  const subbar = subs.length ? `<div class="subsec"><h3>Subcategories</h3><div class="subgrid">${subs.map(x=>`<a class="subcard" href="#/shop?cat=${slug}&sub=${encodeURIComponent(x.s)}"><b>${esc(x.s)}</b><small>${x.n} products</small></a>`).join('')}</div></div>` : '';
   const tb = app.querySelector('.toolbar');
   if (tb) tb.insertAdjacentHTML('afterend', subbar);
 }
@@ -569,7 +648,7 @@ function productView(id){
   <div class="pdp">
     <div class="gal">${imgTag(p)}</div>
     <div>
-      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL SUPPLIER':p.supplier==='SELLER'?'LOCAL SELLER':'CJ DROPSHIPPING'}</span><span class="pill">SKU: ${esc(p.sku)}</span>${p.isNew?'<span class="chip new">NEW</span>':''}</div>
+      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="pill">SKU: ${esc(p.sku)}</span>${p.isNew?'<span class="chip new">NEW</span>':''}</div>
       <h1>${esc(p.name)}</h1>
       <div style="margin:10px 0"><span class="big">${money(effPrice(p))}</span> ${off?`<s style="color:var(--mut)">${money(p.price)}</s> <span class="off">SAVE ${off}%</span>`:''}</div>
       <p style="color:var(--mut);font-size:13px">Price in ${esc(S.cur)} (converted from USD at today's rate). ${p.stock>0?`<b style="color:var(--green)">In stock (${p.stock} available)</b>`:'<b style="color:var(--red)">Out of stock</b>'}</p>
@@ -588,7 +667,7 @@ function productView(id){
         <div>🌍 <span><b>Listed for:</b> ${listedFor(p)}</span></div>
         <div>↩️ <span><b>Returns:</b> within 7 days of delivery for faulty or wrong items — see Returns policy</span></div>
         <div>🔒 <span><b>Buyer protection:</b> full refund if your order never arrives</span></div>
-        <div>🏷️ <span><b>Sold by:</b> ${p.supplier==='PK'?'Pakistani local supplier (via GlobalDrop)':p.supplier==='SELLER'?'Independent seller on GlobalDrop':'CJ Dropshipping (via GlobalDrop)'}</span></div>
+        <div>🏷️ <span><b>Sold by:</b> GlobalDrop</span></div>
       </div>
     </div>
   </div>
@@ -627,7 +706,7 @@ function openQV(id){
   <div class="qvgrid">
     <div>${imgTag(p)}</div>
     <div>
-      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="chip ${p.supplier==='PK'?'pk':'cj'}">${p.supplier==='PK'?'PK LOCAL':'CJ DROPSHIPPING'}</span>${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
+      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px">${p.isNew?'<span class="chip new">NEW</span>':''}${p.stock<=0?'<span class="chip" style="background:#fee;color:#b42318">OUT OF STOCK</span>':''}</div>
       <h3 style="font-size:20px;line-height:1.25">${esc(p.name)}</h3>
       <div class="price" style="font-size:20px;margin:8px 0">${off?`<s>${money(p.price)}</s>`:''}${money(effPrice(p))}${off?`<span class="off">-${off}%</span>`:''}</div>
       <p style="color:var(--mut);font-size:13.5px">${esc((p.desc || '').slice(0, 150))}</p>
@@ -797,7 +876,7 @@ function wishlistView(){
 
 /* ---------- policy / info pages ---------- */
 const PAGES = {
-  about:{t:'About Us', b:`<p><b>GlobalDrop</b> is a single-seller online store run by its owner. We bring you products from <b>CJ Dropshipping's</b> global warehouses and from selected Pakistani suppliers — and every product is listed only for the country it can actually be delivered to, priced in your own currency.</p><h3>How it works</h3><ul><li>You order on GlobalDrop.</li><li>The supplier prepares and ships your order directly to you.</li><li>You track it here, and our buyer protection covers you if anything goes wrong.</li></ul><h3>Our suppliers</h3><p>Products are sourced from CJ Dropshipping's global warehouses and selected Pakistani suppliers, and shipped directly to your door — we never hold stock, which keeps prices low.</p>`},
+  about:{t:'About Us', b:`<p><b>GlobalDrop</b> is a single-seller online store run by its owner. We bring you products from international warehouses and from selected Pakistani suppliers — and every product is listed only for the country it can actually be delivered to, priced in your own currency.</p><h3>How it works</h3><ul><li>You order on GlobalDrop.</li><li>The supplier prepares and ships your order directly to you.</li><li>You track it here, and our buyer protection covers you if anything goes wrong.</li></ul><h3>Our suppliers</h3><p>Products are sourced from international warehouses and selected Pakistani suppliers, and shipped directly to your door — we never hold stock, which keeps prices low.</p>`},
   contact:{t:'Contact Us', b:`<p>We reply on WhatsApp — usually within a few hours.</p><ul><li><b>WhatsApp:</b> 0335-2710980</li>__CONTACT_EMAIL__<li><b>Hours:</b> Mon–Sat, 9am–9pm (PKT)</li></ul><p>For order questions, please include your order number (it starts with GD).</p>`},
   faq:{t:'Frequently Asked Questions', b:`<h3>Why do I only see some products?</h3><p>Our catalog is country-aware: you only see products that can be delivered to your selected shipping country. Change the country from the 🌍 selector at the top to see a different catalog.</p><h3>Why is my price in a different currency?</h3><p>Prices are converted from USD using daily exchange rates. The currency actually charged depends on your payment method — Cash on Delivery is always in local currency.</p><h3>How long does delivery take?</h3><p>Every product page shows an estimate for your country. Products listed for Pakistan arrive in 2–4 working days. Products listed for other countries are delivered within that country, usually in 5–9 working days.</p><h3>Can I pay cash on delivery?</h3><p>Yes — inside Pakistan. For other countries, card checkout is being activated with our payment provider.</p><h3>How do returns work?</h3><p>See our <a href="#/page/returns">Returns &amp; Refunds</a> page.</p>`},
   shipping:{t:'Shipping & Delivery Policy', b:`<h3>Delivery areas & times</h3><ul><li><b>Pakistan:</b> 2–4 working days.</li><li><b>Other countries:</b> usually 5–9 working days. Every product is delivered within the country it is listed for — nothing is shipped from Pakistan to another country.</li></ul><h3>Shipping fees</h3><ul><li>Pakistan: free on orders over $30, otherwise $1.50.</li><li>Other countries: free on orders over $75, otherwise $6.99.</li></ul><h3>Tracking</h3><p>Every order gets a tracking number as soon as the supplier ships it. Track on the <a href="#/track">Track Order</a> page.</p><h3>Delays</h3><p>Customs or courier delays can occasionally extend delivery times. If an order does not arrive within 30 days, buyer protection gives you a full refund.</p>`},
@@ -840,6 +919,50 @@ window.addEventListener('gd:data', e => {
   const kind = e.detail && e.detail.kind;
   if (kind === 'products' || kind === 'settings' || kind === 'reviews') route();
 });
+
+/* ---------- supplier labels (shared by drawer + shop filters) ---------- */
+/* Safety net: an old CSV may carry supplier 'Markaz' — it is always treated
+   as Pakistani local (sup=PK) and never shown under its own name. */
+function supKey(v){ return v === 'Markaz' ? 'PK' : v; }
+function supLabel(k){
+  return k==='CJ' ? 'International' : k==='PK' ? 'Pakistani local' : k==='SELLER' ? 'Local seller' : k;
+}
+function supList(){
+  const order = ['CJ','PK','SELLER'];
+  const keys = [...new Set(P().filter(inCountry).map(p => supKey(p.supplier)).filter(k => order.includes(k)))];
+  keys.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+  return keys;
+}
+
+/* ---------- mobile hamburger menu ---------- */
+let menuBuilt = false, menuOpen = false;
+function buildMenuTree(){
+  if (menuBuilt) return; menuBuilt = true;
+  const el = document.getElementById('menuTree'); if (!el || typeof GD_CAT_TREE === 'undefined') return;
+  el.innerHTML = GD_CAT_TREE.map((ct, i) => {
+    const subs = (ct.subs || []).map((s, j) => {
+      const leaves = (s.leaves || []).map(lf => `<a class="md-link md-l3" href="#/shop?cat=${ct.slug}&sub=${encodeURIComponent(s.name)}&leaf=${encodeURIComponent(lf.name)}">${esc(lf.name)}</a>`).join('');
+      return `<div class="md-row md-l2row"><a class="md-link" href="#/shop?cat=${ct.slug}&sub=${encodeURIComponent(s.name)}">${esc(s.name)}</a><button class="md-chev" data-t="l2-${i}-${j}" aria-label="Expand ${esc(s.name)}">▸</button></div><div class="md-sub" id="md-l2-${i}-${j}">${leaves}</div>`;
+    }).join('');
+    return `<div class="md-row"><a class="md-link md-l1" href="#/cat/${ct.slug}">${esc(ct.name)}</a><button class="md-chev" data-t="l1-${i}" aria-label="Expand ${esc(ct.name)}">▸</button></div><div class="md-sub" id="md-l1-${i}">${subs}</div>`;
+  }).join('');
+}
+function buildMenuSup(){
+  const el = document.getElementById('menuSup'); if (!el) return;
+  el.innerHTML = `<a class="md-link" href="#/shop">All suppliers</a>` + supList().map(v => `<a class="md-link" href="#/shop?sup=${encodeURIComponent(v)}">${esc(supLabel(v))}</a>`).join('');
+}
+function openMenu(){ buildMenuTree(); buildMenuSup(); const d = document.getElementById('menuDrawer'), o = document.getElementById('menuOverlay'); if (!d || !o) return; d.classList.add('open'); o.classList.add('open'); document.body.style.overflow = 'hidden'; menuOpen = true; }
+function closeMenu(){ const d = document.getElementById('menuDrawer'), o = document.getElementById('menuOverlay'); if (d) d.classList.remove('open'); if (o) o.classList.remove('open'); document.body.style.overflow = ''; menuOpen = false; }
+document.getElementById('menuBtn').addEventListener('click', openMenu);
+document.getElementById('menuClose').addEventListener('click', closeMenu);
+document.getElementById('menuOverlay').addEventListener('click', closeMenu);
+document.getElementById('menuDrawer').addEventListener('click', e => {
+  const ch = e.target.closest('.md-chev');
+  if (ch) { const t = document.getElementById('md-' + ch.dataset.t); if (t) t.classList.toggle('open'); ch.classList.toggle('open'); return; }
+  if (e.target.closest('a')) closeMenu();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen) closeMenu(); });
+window.addEventListener('hashchange', closeMenu);
 
 /* ---------- router & init ---------- */
 function route(){
