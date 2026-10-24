@@ -371,7 +371,6 @@ table.spec td:first-child{color:var(--mut);width:170px}
     </div>
     <div class="fine">
       <span>Prices are shown in your selected currency, converted from USD using daily exchange rates — conversions are estimates. The currency charged at checkout depends on the payment method you choose.</span>
-      <span>Demo catalog notice: the current product list is development demo data for building and testing. Real supplier products will replace it before public launch.</span>
       <span>© 2026 GlobalDrop. All rights reserved.</span>
     </div>
   </div>
@@ -852,13 +851,15 @@ function cartTotals(){
    The flat $6.99 fallback renders immediately; the live
    quote (CJ's actual cheapest freight + $1) refreshes the shipping line and
    totals in place when it lands. Pakistan carts never touch this path.
-   Quotes are cached in-memory per cart signature (country + item ids/qtys);
-   a failed signature is remembered so repeat renders never spam CJ, and
-   checkout never blocks on a quote — placeOrder uses the quoted total only
-   when a matching quote is present, else the fallback total. */
+   Quotes are cached in-memory per cart signature (country + item ids/qtys).
+   A failed signature pauses refetch for 60s only — a single transient
+   failure (slow CJ, cold start) must never kill live quotes for the whole
+   session, which is what the old permanent failed-set did. Checkout never
+   blocks on a quote — placeOrder uses the quoted total only when a matching
+   quote is present, else the fallback total. */
 const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
 let __gdFreight = {sig: '', cost: null, pending: false};
-const __gdFreightFailed = new Set();
+const __gdFreightFailed = new Map(); /* sig -> failed-at timestamp (60s cooldown) */
 /* CJ products imported without colors/sizes show no option pickers, so cart
    items carry no color/size and neither live freight quotes nor CJ order
    pushes can confirm a variant. For such CJ products, load the real variants
@@ -924,9 +925,11 @@ async function gdRequestFreight(){
   const sig = gdFreightSig(list);
   if (__gdFreight.pending && __gdFreight.sig === sig) return;
   if (__gdFreight.cost !== null && __gdFreight.sig === sig) return;
-  if (__gdFreightFailed.has(sig)) return;
+  const failedAt = __gdFreightFailed.get(sig);
+  if (failedAt && Date.now() - failedAt < 60000) return; /* cooldown: don't spam CJ */
+  if (failedAt) __gdFreightFailed.delete(sig);
   __gdFreight = {sig, cost: null, pending: true};
-  const fail = () => { if (__gdFreight.sig === sig) { __gdFreight = {sig: '', cost: null, pending: false}; __gdFreightFailed.add(sig); } };
+  const fail = () => { if (__gdFreight.sig === sig) { __gdFreight = {sig: '', cost: null, pending: false}; __gdFreightFailed.set(sig, Date.now()); } };
   try {
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), 30000);
