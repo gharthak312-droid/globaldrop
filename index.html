@@ -1272,6 +1272,20 @@ window.addEventListener('hashchange', route);
         if (cc && GD_COUNTRIES.some(c => c.code === cc)) return cc;
       } catch(e){ /* try the next service */ }
     }
+    /* Third layer (2026-10-24 fix): if both IP services fail in the browser
+       (blockers/slow network), fall back to the device timezone — no network
+       needed. Asia/Karachi -> PK, etc. Only supported store countries count. */
+    try {
+      const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+      const TZMAP = {'Asia/Karachi':'PK','Asia/Dubai':'AE','Asia/Riyadh':'SA','Asia/Qatar':'QA','Asia/Kuwait':'KW','Asia/Muscat':'OM','Asia/Bahrain':'BH','Asia/Kolkata':'IN','Asia/Calcutta':'IN','Asia/Dhaka':'BD','Asia/Colombo':'LK','Asia/Kathmandu':'NP','Asia/Tokyo':'JP','Asia/Seoul':'KR','Asia/Singapore':'SG','Asia/Kuala_Lumpur':'MY','Asia/Jakarta':'ID','Asia/Makassar':'ID','Asia/Jayapura':'ID','Asia/Manila':'PH','Europe/London':'GB','Europe/Berlin':'DE','Europe/Paris':'FR','Europe/Madrid':'ES','Europe/Rome':'IT','Europe/Amsterdam':'NL','Europe/Dublin':'IE','Europe/Stockholm':'SE','Europe/Oslo':'NO','Europe/Copenhagen':'DK','Europe/Warsaw':'PL','Europe/Zurich':'CH','Europe/Istanbul':'TR','Africa/Lagos':'NG','Africa/Nairobi':'KE','Africa/Cairo':'EG','Africa/Johannesburg':'ZA','Pacific/Auckland':'NZ','America/Mexico_City':'MX','America/Tijuana':'MX','America/Cancun':'MX','America/Sao_Paulo':'BR','America/Bahia':'BR','America/Fortaleza':'BR','America/Recife':'BR','America/Belem':'BR','America/Manaus':'BR'};
+      let cc = TZMAP[tz];
+      if (!cc) {
+        if (tz.indexOf('Australia/') === 0) cc = 'AU';
+        else if (['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Anchorage','America/Honolulu','America/Phoenix','America/Detroit'].indexOf(tz) >= 0) cc = 'US';
+        else if (['America/Toronto','America/Vancouver','America/Edmonton','America/Winnipeg','America/Halifax','America/Montreal'].indexOf(tz) >= 0) cc = 'CA';
+      }
+      if (cc && GD_COUNTRIES.some(c => c.code === cc)) return cc;
+    } catch(e){}
     return null;
   }
   const det = await detectCountry();
