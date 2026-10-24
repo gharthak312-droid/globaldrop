@@ -577,6 +577,8 @@ function shopView(params){
   const leafF = params.get('leaf') || '';
   const saleOnly = params.get('sale') === '1';
   const sort = params.get('sort') || 'pop';
+  const featOnly = params.get('feat') === '1';
+  const viewAll = params.get('view') === 'all';
   const supF = params.get('sup') || '';
   const minP = parseFloat(params.get('min') || ''), maxP = parseFloat(params.get('max') || '');
   let list = P().filter(inCountry);
@@ -585,6 +587,7 @@ function shopView(params){
   if (subF) list = list.filter(p => p.sub === subF);
   if (leafF) list = list.filter(p => (p.leaf || '') === leafF);
   if (saleOnly) list = list.filter(p => p.sale && p.sale < p.price);
+  if (featOnly) list = list.filter(p => p.featured);
   if (supF) list = list.filter(p => supKey(p.supplier) === supF);
   if (!isNaN(minP)) list = list.filter(p => effPrice(p) >= minP);
   if (!isNaN(maxP)) list = list.filter(p => effPrice(p) <= maxP);
@@ -614,6 +617,21 @@ function shopView(params){
       }
     }
   }
+  /* Sectioned shop landing (unfiltered All Products only): like other stores,
+     products are grouped into sections of 30 with a More button under each,
+     instead of one long 60-at-a-time grid. Sections with no products hide.
+     Popular = the store's own Popular sort (featured first, then the rest). */
+  const showSections = !q && !catF && !subF && !leafF && !supF && !saleOnly && !featOnly && !viewAll && isNaN(minP) && isNaN(maxP) && sort === 'pop' && list.length;
+  let sectionsHTML = '';
+  if (showSections) {
+    const secs = [
+      {t:'⭐ Featured Products', items: list.filter(p => p.featured), more:'#/shop?feat=1'},
+      {t:'🆕 New Arrivals', items: list.filter(p => p.isNew), more:'#/shop?sort=new'},
+      {t:'🏷️ Top Deals', items: list.filter(p => p.sale && p.sale < p.price), more:'#/shop?sale=1'},
+      {t:'🔥 Popular Products', items: list, more:'#/shop?view=all'},
+    ].filter(s => s.items.length);
+    sectionsHTML = secs.map(s => `<div class="sec"><h2>${s.t} <small style="color:var(--mut);font-size:13px">(${s.items.length})</small></h2></div><div class="pgrid">${s.items.slice(0, 30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="${s.more}">More products →</a></div>`).join('');
+  }
   $('#app').innerHTML = `
   <div class="crumbs"><a href="#/">Home</a> › ${catF?`<a href="#/shop">Shop</a> › ${title}`:title}</div>
   <div class="layout">
@@ -640,7 +658,7 @@ function shopView(params){
       </select></div>
       ${subF?`<p style="margin-bottom:8px"><span class="pill">${esc(subF)}</span> <a href="#/cat/${catF}" style="font-size:13px;color:var(--navy);font-weight:600">✕ clear</a></p>`:''}
       ${leafChips}
-      ${list.length ? `<div class="pgrid" id="shopGrid">${list.slice(0, SHOP_PAGE).map(cardHTML).join('')}</div>${list.length > SHOP_PAGE ? `<div id="shopMoreWrap" style="text-align:center;margin:18px 0"><button class="btn" id="shopMoreBtn" onclick="shopMore()">Load more (${list.length - SHOP_PAGE} remaining)</button></div>` : ''}` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`}
+      ${showSections ? sectionsHTML : (list.length ? `<div class="pgrid" id="shopGrid">${list.slice(0, SHOP_PAGE).map(cardHTML).join('')}</div>${list.length > SHOP_PAGE ? `<div id="shopMoreWrap" style="text-align:center;margin:18px 0"><button class="btn" id="shopMoreBtn" onclick="shopMore()">Load more (${list.length - SHOP_PAGE} remaining)</button></div>` : ''}` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`)}
     </div>
   </div>`;
   window.scrollTo(0,0);
