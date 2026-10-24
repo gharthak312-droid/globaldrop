@@ -129,6 +129,7 @@ footer .fine{border-top:1px solid #26314a;padding:16px 0 22px;font-size:12.5px;c
 .filters label.act{background:rgba(201,162,39,.16);border-radius:8px;font-weight:600}
 .filters input[type=number]{width:100%;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px}
 select.sel{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;background:#fff}
+#ctryBtn{display:none!important}/* STRICT country lock 2026-10-24: no manual country switching */
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap}
 .crumbs{font-size:13px;color:var(--mut);margin:16px 0 4px}
 .crumbs a:hover{color:var(--navy)}
@@ -487,6 +488,9 @@ function countryGrid(){
   });
 }
 async function setCountry(code){
+  /* STRICT lock: refuse any switch away from the IP-detected country. The
+     switcher button is hidden; this guard covers any other caller. */
+  if (code !== S.country) { toast('Showing products for ' + gdCountry(S.country).name + ' only'); return; }
   S.country = code; gdSave('gd_country', code);
   S.cur = gdCountry(code).cur;
   /* Refetch products for the new country before re-rendering — the
@@ -1248,15 +1252,18 @@ function route(){
 }
 window.addEventListener('hashchange', route);
 (async function init(){
-  if (!S.country) {
-    try {
-      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
-      const r = await fetch('https://ipapi.co/json/', {signal: ctl.signal}); clearTimeout(to);
-      const j = await r.json();
-      S.country = (j && GD_COUNTRIES.some(c => c.code === j.country_code)) ? j.country_code : 'US';
-    } catch(e){ S.country = 'US'; }
-    gdSave('gd_country', S.country);
-  }
+  /* STRICT country lock (2026-10-24, owner order): the visitor's country is
+     ALWAYS re-detected from IP on load. A stored country never overrides
+     detection, and the country switcher button is hidden (see #ctryBtn CSS).
+     If detection fails or returns an unsupported country, keep the stored
+     country (or US when there is none). */
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch('https://ipapi.co/json/', {signal: ctl.signal}); clearTimeout(to);
+    const j = await r.json();
+    if (j && GD_COUNTRIES.some(c => c.code === j.country_code)) { S.country = j.country_code; gdSave('gd_country', S.country); }
+    else if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); }
+  } catch(e){ if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); } }
   S.cur = gdCountry(S.country).cur;
   /* If the startup DB load fetched a different country (or is still running
      for one), fetch this country now — its emit re-renders when it lands. */
