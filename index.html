@@ -47,10 +47,13 @@ header.site{background:#fff;border-bottom:1px solid var(--line);position:sticky;
 .ctrybtn{display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600}
 .ctrybtn:hover{border-color:var(--gold)}
 nav.cats{border-top:1px solid var(--line);background:#fff}
-nav.cats .wrap{display:flex;gap:2px;overflow-x:auto;padding:0 8px;scrollbar-width:none}
+nav.cats .wrap{display:flex;gap:2px;overflow-x:auto;padding:0 42px 0 8px;scrollbar-width:none}
 nav.cats .wrap::-webkit-scrollbar{display:none}
 .catlink{white-space:nowrap;padding:10px 12px;font-size:13.5px;font-weight:500;border-bottom:2.5px solid transparent}
 .catlink:hover{color:var(--navy);border-color:var(--gold)}
+.catlink.act{background:rgba(201,162,39,.16);border-radius:8px;font-weight:600}
+nav.cats{position:relative}
+#catNavNext{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;box-shadow:0 2px 8px rgba(10,20,40,.12);cursor:pointer;font-size:17px;line-height:1;z-index:2}
 .hero{background:linear-gradient(120deg,#0b2447 0%,#123a6b 55%,#1b4f8a 100%);color:#fff;border-radius:0}
 .hero .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:center;padding:52px 16px}
 .hero h1{font-size:42px;line-height:1.12;letter-spacing:-1px}
@@ -214,7 +217,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .ctrybtn{padding:8px 10px;font-size:12px;min-height:40px;border-radius:11px}
  .searchbar input{padding:10px 12px;font-size:13.5px}
  .searchbar button{padding:0 14px;font-size:13.5px}
- nav.cats .wrap{padding:0 6px}
+ nav.cats .wrap{padding:0 40px 0 6px}
  .catlink{padding:9px 9px;font-size:12.5px}
  .hero .wrap{padding:20px 16px 22px;gap:12px}
  .hero h1{font-size:24px}
@@ -325,7 +328,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
       </div>
     </div>
   </div>
-  <nav class="cats"><div class="wrap" id="catNav"></div></nav>
+  <nav class="cats"><div class="wrap" id="catNav"></div><button id="catNavNext" aria-label="More categories">›</button></nav>
 </header>
 <div class="menuoverlay" id="menuOverlay"></div>
 <aside class="menudrawer" id="menuDrawer" aria-label="Menu">
@@ -432,10 +435,36 @@ function paintChrome(){
   const c = gdCountry(S.country);
   $('#ctryLabel').textContent = c.code + ' · ' + c.cur;
   const catNav = $('#catNav');
-  catNav.innerHTML = `<a class="catlink" href="#/shop">All Products</a>` + gdCategories().map(ct => {
+  /* Top category nav: the clicked category keeps the same golden background
+     as the shop sidebar until another is picked. Route decides the active
+     one (category page, or shop filtered by cat); All Products only on the
+     unfiltered shop view. */
+  const _h = location.hash || '#/';
+  const _parts = _h.slice(1).split('?')[0].split('/').filter(Boolean);
+  const _qp = new URLSearchParams(_h.includes('?') ? _h.split('?')[1] : '');
+  const actCat = (_parts[0] === 'cat' && _parts[1]) ? _parts[1] : (_parts[0] === 'shop' ? (_qp.get('cat') || '') : '');
+  const allAct = _parts[0] === 'shop' && !actCat;
+  catNav.innerHTML = `<a class="catlink ${allAct?'act':''}" href="#/shop">All Products</a>` + gdCategories().map(ct => {
     const n = P().filter(p => p.cat === ct.slug && inCountry(p)).length;
-    return n ? `<a class="catlink" href="#/cat/${ct.slug}">${ct.icon} ${esc(ct.name)}</a>` : '';
+    return n ? `<a class="catlink ${ct.slug===actCat?'act':''}" href="#/cat/${ct.slug}">${ct.icon} ${esc(ct.name)}</a>` : '';
   }).join('');
+  /* Scroll arrow at the row's right end: reveals the categories that don't
+     fit (the row scrolls horizontally with a hidden scrollbar). Hides itself
+     once the row is scrolled to the end. */
+  const nxBtn = $('#catNavNext');
+  if (nxBtn) {
+    if (!nxBtn.dataset.bound) {
+      nxBtn.dataset.bound = '1';
+      nxBtn.onclick = () => { const el = $('#catNav'); if (el) el.scrollBy({left: 320, behavior:'smooth'}); };
+      const upd = () => { const el = $('#catNav'); if (el) nxBtn.style.display = (el.scrollWidth - el.clientWidth - el.scrollLeft > 20) ? '' : 'none'; };
+      catNav.addEventListener('scroll', upd);
+      window.addEventListener('resize', upd);
+      nxBtn._upd = upd;
+    }
+    if (nxBtn._upd) nxBtn._upd();
+    const actEl = catNav.querySelector('.catlink.act');
+    if (actEl) actEl.scrollIntoView({inline:'nearest', block:'nearest'});
+  }
   const cb = $('#cartBadge'), wb = $('#wishBadge');
   const cq = S.cart.reduce((a,i)=>a+i.qty,0);
   cb.textContent = cq; cb.classList.toggle('hidden', !cq);
@@ -889,7 +918,11 @@ function gdFreightCartItems(){
   const list = [];
   for (const ci of S.cart) {
     const p = PROD(ci.id);
-    if (!p || p.supplier !== 'CJ') return null; /* mixed/foreign cart: flat fallback */
+    /* Stale/foreign cart entries (not in this country's catalog) must NOT veto
+       the quote for the items actually being ordered — cartTotals already
+       ignores them when building the order, so freight must match the order. */
+    if (!p) continue;
+    if (p.supplier !== 'CJ') return null; /* mixed/foreign cart: flat fallback */
     list.push({ci, p});
   }
   return list.length ? list : null;
@@ -1134,6 +1167,21 @@ window.addEventListener('gd:data', e => {
   const h = location.hash || '#/';
   if (h.startsWith('#/checkout') || h.startsWith('#/track')) return;
   const kind = e.detail && e.detail.kind;
+  if (kind === 'products') {
+    /* Stale-cart purge (guarded): once the current country's FULL catalog has
+       loaded, drop cart entries that are not in it — foreign-country leftovers
+       from earlier sessions. Without this, a stale entry silently vetoes the
+       live CJ freight quote and inflates the cart badge (6 shown, 1 visible).
+       Never purges on a failed load: gdDbProductsCountry() then still holds a
+       different (or no) country, so the guard blocks it. */
+    try {
+      if (typeof gdDbProductsCountry === 'function' && gdDbProductsCountry() === S.country) {
+        const before = S.cart.length;
+        S.cart = S.cart.filter(i => { const p = PROD(i.id); return p && gdAvailable(p, S.country); });
+        if (S.cart.length < before) gdSave('gd_cart', S.cart);
+      }
+    } catch(e) {}
+  }
   if (kind === 'products' || kind === 'settings' || kind === 'reviews') route();
 });
 
