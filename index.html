@@ -385,7 +385,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <div id="qvBody"></div>
 </div></div>
 <div id="toast"></div>
-<script src="store-data.js?v=2"></script>
+<script src="store-data.js?v=3"></script>
 <script src="gd-track.js"></script>
 <script>
 /* ============ GlobalDrop storefront app ============ */
@@ -552,6 +552,9 @@ function shopMore(){
 }
 
 function shopView(params){
+  /* First DB load still in flight: show a loading state, never the stale
+     demo fallback — its brief flash on refresh is what the owner asked to remove. */
+  if (typeof gdIsProductsLoading === 'function' && gdIsProductsLoading()) { $('#app').innerHTML = `<div class="empty" style="margin-top:26px"><div class="ic">⏳</div>Loading products…</div>`; return; }
   const q = (params.get('q') || '').toLowerCase();
   const catF = params.get('cat') || '';
   const subF = params.get('sub') || '';

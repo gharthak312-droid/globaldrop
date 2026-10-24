@@ -294,7 +294,7 @@ async function gdDbLoadProducts(country){
   __gdDbProductsLoading = code;
   const rows = await gdDbLoadProductsAll(code ? 'country=eq.' + encodeURIComponent(code) : '');
   __gdDbProductsLoading = null;
-  if (rows === null) return __gdDbProducts;
+  if (rows === null) { gdDbEmit('products'); return __gdDbProducts; }
   if (seq !== __gdDbProductsSeq) return __gdDbProducts;
   __gdDbProducts = rows.map(gdRowToProduct);
   __gdDbProductsCountry = code;
@@ -309,6 +309,10 @@ async function gdDbLoadProductsIfNeeded(code){
   return gdDbLoadProducts(code);
 }
 function gdDbProductsCountry(){ return __gdDbProductsCountry; }
+/* True while the first DB product load is still in flight and no DB data
+   has arrived yet — views use this to show a loading state instead of the
+   stale demo fallback, so a refresh never flashes wrong products. */
+function gdIsProductsLoading(){ return !__gdDbProducts && __gdDbProductsLoading !== null; }
 async function gdDbLoadSettings(){
   const rows = await gdDb('settings?select=value&key=eq.store');
   if (Array.isArray(rows) && rows.length && rows[0].value) {
