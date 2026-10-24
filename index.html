@@ -187,15 +187,76 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .pdp{grid-template-columns:1fr}
  .banner2{grid-template-columns:1fr}
  footer .cols{grid-template-columns:1fr 1fr}
- .searchbar{display:none}
  .hbtn span.lbl{display:none}
+ /* header wraps: line 1 = logo + actions, line 2 = full-width search */
+ .hrow{flex-wrap:wrap;gap:10px 12px}
+ .searchbar{order:3;flex:1 1 100%;max-width:none}
 }
 .btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
 .sheet.qv{max-width:780px;position:relative}
 .qvgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .qvgrid>div:first-child img{width:100%;height:100%;max-height:340px;object-fit:cover;border-radius:12px}
 .qvX{position:absolute;top:10px;right:12px;background:#fff;border:1px solid #E3DDD0;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:15px;z-index:2}
-@media(max-width:640px){.qvgrid{grid-template-columns:1fr}}
+@media(max-width:640px){
+ .qvgrid{grid-template-columns:1fr}
+ /* ---- mobile shop layout (Daraz/Amazon pattern): slim 3-line top, then products ---- */
+ .announce{font-size:12px;padding:7px 10px}
+ .hrow{gap:8px 10px;padding:10px 0 12px}
+ .logo{font-size:20px}
+ .hbtns{gap:2px}
+ .hbtn{padding:7px 6px;min-width:40px;min-height:40px;justify-content:center}
+ .hbtn .ic{font-size:19px}
+ .ctrybtn{padding:8px 10px;font-size:12px;min-height:40px;border-radius:11px}
+ .searchbar input{padding:10px 12px;font-size:13.5px}
+ .searchbar button{padding:0 14px;font-size:13.5px}
+ nav.cats .wrap{padding:0 6px}
+ .catlink{padding:9px 9px;font-size:12.5px}
+ .hero .wrap{padding:20px 16px 22px;gap:12px}
+ .hero h1{font-size:24px}
+ .hero p{font-size:13.5px;margin:9px 0 14px}
+ .herocta{padding:10px 18px;font-size:13.5px;border-radius:11px}
+ .heroimg{border-radius:14px}
+ .heroimg img{height:150px}
+ .trustrow{gap:8px;margin:14px 0}
+ .trust{padding:10px;gap:8px;border-radius:12px}
+ .trust .ic{font-size:20px}
+ .trust b{font-size:12.5px}
+ .trust small{font-size:11px}
+ .sec{margin:22px 0 4px}
+ .sec h2{font-size:18px}
+ .catgrid{grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 4px}
+ .catcard{padding:10px 3px;border-radius:12px}
+ .catcard:hover{transform:none}
+ .catcard .ic{font-size:23px;margin-bottom:4px}
+ .catcard b{font-size:11px;line-height:1.25}
+ .catcard small{display:none}
+ .pgrid{grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 8px}
+ .pcard{border-radius:12px}
+ .pcard:hover{transform:none}
+ .pcard .bd{padding:9px 10px 11px;gap:4px}
+ .pcard h3{font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
+ .pcard .meta .chip{font-size:9.5px;padding:2px 6px}
+ .price{font-size:15px}
+ .price s{font-size:12px}
+ .pcard .ship{font-size:11px}
+ .pcard .acts{gap:6px;padding-top:6px}
+ .pcard .acts .btn.sm{padding:8px 8px;font-size:12.5px}
+ .iconbtn{padding:8px 9px;font-size:14px}
+ .banner2{gap:10px;margin:12px 0}
+ .promo{padding:16px;min-height:110px;border-radius:14px}
+ .promo h3{font-size:17px}
+ .layout{gap:14px;margin:14px 0}
+ .filters{padding:13px}
+ .filters h4{margin:11px 0 6px}
+ .filters label{font-size:13px;padding:3px 0}
+ .toolbar h2{font-size:18px!important}
+ .pdp{gap:18px;margin:12px 0}
+ .pdp h1{font-size:21px}
+ .pdp .big{font-size:23px}
+ .sheet{padding:19px}
+ .pagebox{padding:19px}
+ footer .cols{gap:18px;padding:30px 0 20px}
+}
 </style>
 </head>
 <body>
