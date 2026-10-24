@@ -434,9 +434,12 @@ function countryGrid(){
     setCountry(b.dataset.cc); closeModal('ctryModal'); toast('Showing products for ' + gdCountry(S.country).name);
   });
 }
-function setCountry(code){
+async function setCountry(code){
   S.country = code; gdSave('gd_country', code);
   S.cur = gdCountry(code).cur;
+  /* Refetch products for the new country before re-rendering — the
+     storefront DB cache only ever holds one country's products. */
+  await gdDbLoadProducts(code);
   /* Cart cleanup: products not listed for the new country cannot be delivered
      there, so they leave the cart automatically (with a clear notice). */
   const before = S.cart.length;
@@ -531,6 +534,23 @@ function homeView(){
   window.scrollTo(0,0);
 }
 
+/* Shop grid pagination: only the first page of cards renders at once; the
+   rest arrive via Load more without a full re-render (scroll position and
+   already-loaded images are kept). Every fresh shopView render resets to
+   the first page. */
+const SHOP_PAGE = 60;
+let shopPageList = [], shopPageShown = 0;
+function shopMore(){
+  const grid = $('#shopGrid'); if (!grid) return;
+  const next = shopPageList.slice(shopPageShown, shopPageShown + SHOP_PAGE);
+  grid.insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
+  shopPageShown += next.length;
+  const remaining = shopPageList.length - shopPageShown;
+  const wrap = $('#shopMoreWrap');
+  if (remaining <= 0) { if (wrap) wrap.remove(); }
+  else { const btn = $('#shopMoreBtn'); if (btn) btn.textContent = `Load more (${remaining} remaining)`; }
+}
+
 function shopView(params){
   const q = (params.get('q') || '').toLowerCase();
   const catF = params.get('cat') || '';
@@ -553,6 +573,7 @@ function shopView(params){
   else if (sort === 'high') list.sort((a,b)=>effPrice(b)-effPrice(a));
   else if (sort === 'new') list.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0));
   else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
+  shopPageList = list; shopPageShown = Math.min(SHOP_PAGE, list.length);
   const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : 'All Products');
   const catsAvail = gdCategories().map(ct => ({ct, n: P().filter(p=>p.cat===ct.slug && inCountry(p)).length})).filter(x=>x.n);
   /* Leaf (L3) browsing — when a category + subcategory are selected, the
@@ -600,7 +621,7 @@ function shopView(params){
       </select></div>
       ${subF?`<p style="margin-bottom:8px"><span class="pill">${esc(subF)}</span> <a href="#/cat/${catF}" style="font-size:13px;color:var(--navy);font-weight:600">✕ clear</a></p>`:''}
       ${leafChips}
-      ${list.length ? `<div class="pgrid">${list.map(cardHTML).join('')}</div>` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`}
+      ${list.length ? `<div class="pgrid" id="shopGrid">${list.slice(0, SHOP_PAGE).map(cardHTML).join('')}</div>${list.length > SHOP_PAGE ? `<div id="shopMoreWrap" style="text-align:center;margin:18px 0"><button class="btn" id="shopMoreBtn" onclick="shopMore()">Load more (${list.length - SHOP_PAGE} remaining)</button></div>` : ''}` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`}
     </div>
   </div>`;
   window.scrollTo(0,0);
@@ -996,6 +1017,9 @@ window.addEventListener('hashchange', route);
     gdSave('gd_country', S.country);
   }
   S.cur = gdCountry(S.country).cur;
+  /* If the startup DB load fetched a different country (or is still running
+     for one), fetch this country now — its emit re-renders when it lands. */
+  gdDbLoadProductsIfNeeded(S.country);
   /* Render immediately with cached/fallback rates — never wait on the network,
      then refresh prices in place when live rates arrive. */
   S.rates = (gdRatesCache && gdRatesCache.rates) || GD_FALLBACK_RATES;

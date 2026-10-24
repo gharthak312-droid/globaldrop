@@ -141,6 +141,7 @@ const gdSave = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } c
    this file). While null, every reader falls back to localStorage / built-ins,
    so the store renders instantly and never renders empty on a network failure. */
 let __gdDbProducts = null, __gdDbReviews = null, __gdDbOrders = null, __gdRemoteSettings = null;
+let __gdDbProductsCountry = null, __gdDbProductsLoading = null, __gdDbProductsSeq = 0;
 
 function gdSettings(){ return Object.assign({}, GD_STORE, gdLoad('gd_settings', {}), __gdRemoteSettings || {}); }
 function gdProducts(){
@@ -248,7 +249,7 @@ function gdRowToReview(r){
 }
 
 /* ----- cache accessors / merged views (localStorage + DB) ----- */
-function gdSetProductsCache(list){ __gdDbProducts = list; }
+function gdSetProductsCache(list){ __gdDbProducts = list; __gdDbProductsCountry = null; }
 function gdDbReviewsCache(){ return __gdDbReviews; }
 function gdDbOrdersCache(){ return __gdDbOrders; }
 function gdPushReviewCache(rev){ if (__gdDbReviews) __gdDbReviews.unshift(rev); }
@@ -264,11 +265,50 @@ function gdAllOrdersMerged(){
 }
 
 /* ----- loaders (startup + on demand) ----- */
-async function gdDbLoadProducts(){
-  const rows = await gdDb('products?select=*&order=id.asc');
-  if (Array.isArray(rows) && rows.length) { __gdDbProducts = rows.map(gdRowToProduct); gdDbEmit('products'); }
+/* Paginated product load. PostgREST caps a single response at 1000 rows, so
+   the old single request silently dropped everything past row 1000 — with
+   ~20k products that meant whole countries (e.g. all of Pakistan) never
+   arrived, and the partial response then replaced the good localStorage
+   cache, emptying the grid on refresh. Pages are fetched sequentially until
+   a short page ends the list. Any page failure aborts the loop and leaves
+   the previous cache untouched (no emit). On the storefront only the current
+   country's products are loaded; the admin (no #app) loads everything. A
+   generation counter discards a stale load that finishes after a newer one
+   started (e.g. the startup US load vs an ipapi-detected country load). */
+async function gdDbLoadProductsAll(filter){
+  const all = [];
+  let offset = 0;
+  for (;;) {
+    const rows = await gdDb('products?select=*&order=id.asc' + (filter ? '&' + filter : '') + '&limit=1000&offset=' + offset);
+    if (!Array.isArray(rows)) return null;
+    all.push(...rows);
+    if (rows.length < 1000) break;
+    offset += 1000;
+  }
+  return all;
+}
+async function gdDbLoadProducts(country){
+  const storefront = typeof document !== 'undefined' && document.getElementById('app');
+  const code = storefront ? (country || gdLoad('gd_country', null) || 'US') : null;
+  const seq = ++__gdDbProductsSeq;
+  __gdDbProductsLoading = code;
+  const rows = await gdDbLoadProductsAll(code ? 'country=eq.' + encodeURIComponent(code) : '');
+  __gdDbProductsLoading = null;
+  if (rows === null) return __gdDbProducts;
+  if (seq !== __gdDbProductsSeq) return __gdDbProducts;
+  __gdDbProducts = rows.map(gdRowToProduct);
+  __gdDbProductsCountry = code;
+  gdDbEmit('products');
   return __gdDbProducts;
 }
+/* Storefront startup helper: reload only if the cache isn't already for this
+   country (and no load for it is in flight — that load's emit re-renders). */
+async function gdDbLoadProductsIfNeeded(code){
+  if (__gdDbProducts && __gdDbProductsCountry === code) return __gdDbProducts;
+  if (__gdDbProductsLoading === code) return __gdDbProducts;
+  return gdDbLoadProducts(code);
+}
+function gdDbProductsCountry(){ return __gdDbProductsCountry; }
 async function gdDbLoadSettings(){
   const rows = await gdDb('settings?select=value&key=eq.store');
   if (Array.isArray(rows) && rows.length && rows[0].value) {
