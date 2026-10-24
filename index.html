@@ -397,7 +397,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <div id="coBody"></div>
 </div></div>
 <div id="toast"></div>
-<script src="store-data.js?v=9"></script>
+<script src="store-data.js?v=10"></script>
 <script src="gd-track.js"></script>
 <script>
 /* ============ GlobalDrop storefront app ============ */
@@ -1130,7 +1130,7 @@ async function doTrack(){
   const match = o => { const op = dg(o.phone); return op && ph && (op === ph || op.slice(-10) === ph.slice(-10)); };
   let o = gdAllOrdersMerged().find(x => x.id.toUpperCase() === id && match(x));
   if (!o) { const d = await gdDbGetOrder(id); if (d && match(d)) o = d; }
-  $('#trOut').innerHTML = o ? `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : '<p style="color:var(--red);font-weight:600">Order not found — check the number and phone number.</p>';
+  $('#trOut').innerHTML = !o ? '<p style="color:var(--red);font-weight:600">Order not found — check the number and phone number.</p>' : (o.status === 'Deleted' ? `<div class="infobox" style="margin:0"><div>❌ <span><b>This order has been deleted by the store.</b></span></div>${o.delReason?`<div>📝 <span><b>Reason:</b> ${esc(o.delReason)}</span></div>`:''}<div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>`);
 }
 function wishlistView(){
   const list = S.wish.map(PROD).filter(Boolean);

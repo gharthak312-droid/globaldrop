@@ -68,7 +68,7 @@ small.hint{color:var(--mut);font-size:12px}
 </main>
 <div id="toast"></div>
 
-<script src="store-data.js?v=9"></script>
+<script src="store-data.js?v=10"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -153,7 +153,7 @@ const fmtUSD = n => '$' + Number(n||0).toFixed(2);
 
 function vOverview(){
   const os = orders(), prods = gdProducts();
-  const rev = os.filter(o=>o.status!=='Cancelled'&&o.status!=='Refunded').reduce((a,o)=>a+o.total,0);
+  const rev = os.filter(o=>o.status!=='Cancelled'&&o.status!=='Refunded'&&o.status!=='Deleted').reduce((a,o)=>a+o.total,0);
   const byCountry = {};
   os.forEach(o => { byCountry[o.country] = (byCountry[o.country]||0) + o.total; });
   $('#view').innerHTML = `
@@ -164,7 +164,7 @@ function vOverview(){
     <div class="stat"><b>${prods.length}</b><small>Products in catalog</small></div>
     <div class="stat"><b>${(gdDbReviewsCache() || gdLoad('gd_reviews',[])).length}</b><small>Customer reviews</small></div>
     <div class="stat"><b>${gdLoad('gd_newsletter',[]).length}</b><small>Newsletter subscribers</small></div>
-    <div class="stat"><b>${os.length?fmtUSD(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled').length)):'$0.00'}</b><small>Average order value</small></div>
+    <div class="stat"><b>${os.length?fmtUSD(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled'&&o.status!=='Deleted').length)):'$0.00'}</b><small>Average order value</small></div>
     <div class="stat"><b>${prods.filter(p=>p.stock<=0).length}</b><small>Out-of-stock products</small></div>
   </div>
   <div class="card" style="margin-top:14px"><h3>Sales by country</h3>
@@ -177,13 +177,13 @@ function orderTable(os, full){
   ${os.map(o => `<tr><td><b>${esc(o.id)}</b></td><td>${new Date(o.at).toLocaleDateString('en-GB')}</td>
   <td>${esc(o.name)}<br><small class="hint">${esc(o.phone || o.email)}</small></td><td>${esc(o.country)}</td>
   <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtUSD(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
-  <td>${full ? `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'?'r':'y'}">${esc(o.status)}</span>`}</td>
-  ${full?`<td><input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no."></td>
-  <td><button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button>${cjCell(o)}</td>`:''}</tr>`).join('')}</table></div>`;
+  <td>${full ? (o.status==='Deleted' ? `<span class="pill r">Deleted</span>${o.delReason?`<br><small class="hint">${esc(o.delReason)}</small>`:''}` : `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`) : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'||o.status==='Deleted'?'r':'y'}">${esc(o.status)}</span>`}</td>
+  ${full?`<td>${o.status==='Deleted'?'—':`<input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no.">`}</td>
+  <td>${o.status==='Deleted' ? `<button class="btn sm ghost" onclick="restoreOrder('${o.id}')">Restore</button>` : `<button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button> <button class="btn sm red" onclick="delOrder('${o.id}')">Delete</button>${cjCell(o)}`}</td>`:''}</tr>`).join('')}</table></div>`;
 }
 function vOrders(){
   const os = orders();
-  $('#view').innerHTML = `<div class="card"><h3>All Orders (${os.length})</h3><p class="hint" style="margin:5px 0 10px">Update status and add tracking numbers — customers see both on the Track Order page. Supplier fulfillment: CJ items carry their CJ SKU; PK items go to the local supplier.</p>${os.length?orderTable(os,true):'<p class="hint">No orders yet.</p>'}</div>`;
+  $('#view').innerHTML = `<div class="card"><h3>All Orders (${os.length})</h3><p class="hint" style="margin:5px 0 10px">Update status and add tracking numbers — customers see both on the Track Order page. Delete marks an order Deleted (with your optional reason, shown to the customer on Track Order) — it is never fully erased, and Restore brings it back. Supplier fulfillment: CJ items carry their CJ SKU; PK items go to the local supplier.</p>${os.length?orderTable(os,true):'<p class="hint">No orders yet.</p>'}</div>`;
   refreshOrders();
 }
 function setStatus(id, st){
@@ -201,11 +201,40 @@ function saveTracking(id){
   if (o) { o.tracking = val; gdDbUpdateOrder(o, {tracking: val}); }
   toast('Tracking saved for '+id);
 }
+/* Delete = soft delete, never a hard row removal: the order stays in the
+   DB marked Deleted so the customer still sees it (with your reason) on
+   Track Order. Restore puts it back to its previous status. */
+function delOrder(id){
+  const o = orders().find(x=>x.id===id);
+  if (!o) return;
+  let msg = 'Ye order delete kar dun? Customer ko Track Order par "Deleted" + reason dikhega.';
+  if (o.cjOrderId) msg += '\nNote: ye order CJ ko bheja ja chuka hai — CJ par wo order tum ko khud cancel karna hoga.';
+  if (!confirm(msg)) return;
+  const reason = prompt('Delete reason (optional) — customer ko yehi dikhega:', '');
+  if (reason === null) return;
+  const prev = o.status;
+  const local = gdLoad('gd_orders', []); const lo = local.find(x=>x.id===id);
+  if (lo) { lo.status = 'Deleted'; lo.delReason = reason; lo.prevStatus = prev; gdSave('gd_orders', local); }
+  o.status = 'Deleted'; o.delReason = reason; o.prevStatus = prev;
+  gdDbUpdateOrder(o, {status: 'Deleted', delReason: reason, prevStatus: prev});
+  toast('Order ' + id + ' deleted'); show(curTab);
+}
+function restoreOrder(id){
+  const o = orders().find(x=>x.id===id);
+  if (!o) return;
+  const target = o.prevStatus || 'Placed';
+  const local = gdLoad('gd_orders', []); const lo = local.find(x=>x.id===id);
+  if (lo) { lo.status = target; lo.delReason = ''; lo.prevStatus = ''; gdSave('gd_orders', local); }
+  o.status = target; o.delReason = ''; o.prevStatus = '';
+  gdDbUpdateOrder(o, {status: target, delReason: '', prevStatus: ''});
+  toast('Order ' + id + ' restored → ' + target); show(curTab);
+}
 /* CJ order push — orders containing real imported CJ products (item ids cj_*)
    get a "Send to CJ" button until the function has stored a cjOrderId on the
    order. The function runs the CJ flow up to the payment ID only; the CJ
    balance payment itself is always done by the owner in My CJ. */
 function cjCell(o){
+  if (o.status==='Deleted' && !o.cjOrderId) return '';
   if (o.cjOrderId) return `<div style="margin-top:6px"><span class="pill g">CJ: ${esc(o.cjOrderId)}</span></div>`;
   const hasCj = (o.items || []).some(i => String(i.id || '').startsWith('cj_'));
   if (!hasCj) return '';

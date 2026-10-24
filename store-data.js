@@ -250,7 +250,10 @@ function gdProductToRow(p){
     description:p.desc || '', specs:p.specs || {}, stock:p.stock || 0,
     days_min:(p.days && p.days[0]) || 5, days_max:(p.days && p.days[1]) || 9, featured:!!p.featured, is_new:!!p.isNew };
 }
-function gdOrderCustomer(o){ return {name:o.name || '', phone:o.phone || '', address:o.addr || '', city:o.city || '', zip:o.zip || '', tracking:o.tracking || ''}; }
+/* NOTE: the raw customer object is spread first so extra keys stored in it
+   (cjOrderId, delete_reason, prev_status, ...) survive a tracking/status
+   round-trip — rebuilding from known fields only used to silently wipe them. */
+function gdOrderCustomer(o){ return Object.assign({}, o._cust || {}, {name:o.name || '', phone:o.phone || '', address:o.addr || '', city:o.city || '', zip:o.zip || '', tracking:o.tracking || ''}); }
 function gdRowToOrder(r){
   const c = r.customer || {};
   return { id:r.id, at:r.created_at ? Date.parse(r.created_at) : Date.now(), email:r.email || '', name:c.name || '',
@@ -258,7 +261,8 @@ function gdRowToOrder(r){
     items:r.items || [], sub:gdNum(r.subtotal), disc:0, ship:gdNum(r.shipping), total:gdNum(r.total),
     cur:r.currency || 'USD', payment:r.payment || 'cod',
     status:(r.status === 'Pending' ? 'Placed' : (r.status || 'Placed')), tracking:c.tracking || '',
-    cjOrderId:c.cjOrderId || '', cjPaymentId:c.cjPaymentId || '', cjAmount:(c.cjAmount != null ? +c.cjAmount : null), cjLogistic:c.cjLogistic || '' };
+    cjOrderId:c.cjOrderId || '', cjPaymentId:c.cjPaymentId || '', cjAmount:(c.cjAmount != null ? +c.cjAmount : null), cjLogistic:c.cjLogistic || '',
+    delReason:c.delete_reason || '', prevStatus:c.prev_status || '', _cust:c };
 }
 function gdRowToReview(r){
   return { pid:r.product_id, name:r.name || '', stars:r.rating || 5, text:r.body || '', verified:!!r.verified,
@@ -388,7 +392,11 @@ async function gdDbPostOrder(o){
 async function gdDbUpdateOrder(o, patch){
   const body = {};
   if (patch.status !== undefined) body.status = (patch.status === 'Placed' ? 'Pending' : patch.status);
-  if (patch.tracking !== undefined) { const c = gdOrderCustomer(o); c.tracking = patch.tracking; body.customer = c; }
+  let cust = null; const needCust = () => cust || (cust = gdOrderCustomer(o));
+  if (patch.tracking !== undefined) needCust().tracking = patch.tracking;
+  if (patch.delReason !== undefined) needCust().delete_reason = patch.delReason;
+  if (patch.prevStatus !== undefined) needCust().prev_status = patch.prevStatus;
+  if (cust) body.customer = cust;
   const res = await gdDb('orders?id=eq.' + encodeURIComponent(o.id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body)});
   return res !== null;
 }
