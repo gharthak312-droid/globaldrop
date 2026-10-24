@@ -446,7 +446,8 @@ function paintChrome(){
   const _qp = new URLSearchParams(_h.includes('?') ? _h.split('?')[1] : '');
   const actCat = (_parts[0] === 'cat' && _parts[1]) ? _parts[1] : (_parts[0] === 'shop' ? (_qp.get('cat') || '') : '');
   const allAct = _parts[0] === 'shop' && !actCat;
-  catNav.innerHTML = `<a class="catlink ${allAct?'act':''}" href="#/shop">All Products</a>` + gdCategories().map(ct => {
+  const homeAct = _parts.length === 0;
+  catNav.innerHTML = `<a class="catlink ${homeAct?'act':''}" href="#/">🏠 Home</a><a class="catlink ${allAct?'act':''}" href="#/shop">All Products</a>` + gdCategories().map(ct => {
     const n = P().filter(p => p.cat === ct.slug && inCountry(p)).length;
     return n ? `<a class="catlink ${ct.slug===actCat?'act':''}" href="#/cat/${ct.slug}">${ct.icon} ${esc(ct.name)}</a>` : '';
   }).join('');
