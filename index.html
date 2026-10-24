@@ -1255,15 +1255,28 @@ window.addEventListener('hashchange', route);
   /* STRICT country lock (2026-10-24, owner order): the visitor's country is
      ALWAYS re-detected from IP on load. A stored country never overrides
      detection, and the country switcher button is hidden (see #ctryBtn CSS).
-     If detection fails or returns an unsupported country, keep the stored
-     country (or US when there is none). */
-  try {
-    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
-    const r = await fetch('https://ipapi.co/json/', {signal: ctl.signal}); clearTimeout(to);
-    const j = await r.json();
-    if (j && GD_COUNTRIES.some(c => c.code === j.country_code)) { S.country = j.country_code; gdSave('gd_country', S.country); }
-    else if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); }
-  } catch(e){ if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); } }
+     Detection tries ipapi.co first, then ip-api.com as a fallback (2026-10-24
+     fix: a single failing service left VPN-era stored countries stuck).
+     If both fail, keep the stored country (or US when there is none). */
+  async function detectCountry(){
+    const services = [
+      {url: 'https://ipapi.co/json/', code: j => j && j.country_code},
+      {url: 'https://ip-api.com/json/', code: j => j && j.countryCode},
+    ];
+    for (const svc of services) {
+      try {
+        const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
+        const r = await fetch(svc.url, {signal: ctl.signal}); clearTimeout(to);
+        const j = await r.json();
+        const cc = svc.code(j);
+        if (cc && GD_COUNTRIES.some(c => c.code === cc)) return cc;
+      } catch(e){ /* try the next service */ }
+    }
+    return null;
+  }
+  const det = await detectCountry();
+  if (det) { S.country = det; gdSave('gd_country', S.country); }
+  else if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); }
   S.cur = gdCountry(S.country).cur;
   /* If the startup DB load fetched a different country (or is still running
      for one), fetch this country now — its emit re-renders when it lands. */
