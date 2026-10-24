@@ -394,7 +394,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <div id="coBody"></div>
 </div></div>
 <div id="toast"></div>
-<script src="store-data.js?v=5"></script>
+<script src="store-data.js?v=6"></script>
 <script src="gd-track.js"></script>
 <script>
 /* ============ GlobalDrop storefront app ============ */
@@ -789,7 +789,7 @@ function cartTotals(){
   const items = S.cart.map(ci => { const p = PROD(ci.id); if (!p) return null; const lt = effPrice(p) * ci.qty; sub += lt; return {ci, p, lt}; }).filter(Boolean);
   /* Pakistan keeps its per-product Rs 139/70 math untouched. Non-PK carts
      use a matching live CJ freight quote (actual freight + $1) when one is
-     present, else the flat fallback ($6.99, free over $75) — the quote is
+     present, else the flat $6.99 fallback — the quote is
      fetched by the cart/checkout views, never here, so ordering never blocks. */
   let ship = 0;
   if (items.length) {
@@ -803,7 +803,7 @@ function cartTotals(){
 }
 
 /* ---------- CJ live freight quote (non-PK carts only) ----------
-   The flat $6.99 / free-over-$75 fallback renders immediately; the live
+   The flat $6.99 fallback renders immediately; the live
    quote (CJ's actual cheapest freight + $1) refreshes the shipping line and
    totals in place when it lands. Pakistan carts never touch this path.
    Quotes are cached in-memory per cart signature (country + item ids/qtys);
@@ -920,7 +920,7 @@ function checkoutHTML(){
 
       <div class="fld"><label>Street address *</label><input id="coAddr" placeholder="House, street, area"></div>
       <div class="f2"><div class="fld"><label>City *</label><input id="coCity"></div>
-      <div class="fld"><label>Postal code</label><input id="coZip"></div></div>
+      </div>
       <div class="fld"><label>Shipping country</label><input value="${esc(c.name)}" disabled><small style="color:var(--mut)">To ship to another country, change it from the 🌍 selector at the top — product availability and prices will update.</small></div>
     </div>
     <div class="pagebox" style="margin:0"><h3 style="margin-top:0">2 · Payment method</h3>
@@ -965,7 +965,7 @@ function placeOrder(){
   for (const {ci,p} of t.items) { if (ci.qty > p.stock) { toast('Not enough stock for ' + p.name); return; } }
   const orders = gdLoad('gd_orders', []);
   const order = {
-    id: gdUid('GD'), at: Date.now(), email: '', name, phone, addr, city, zip: g('#coZip'), country: S.country,
+    id: gdUid('GD'), at: Date.now(), email: '', name, phone, addr, city, zip: '', country: S.country,
     items: t.items.map(({ci,p,lt}) => ({id:p.id, name:p.name, img:p.img, qty:ci.qty, color:ci.color, size:ci.size, price:effPrice(p), lt, supplier:p.supplier, sku:p.sku})),
     sub: t.sub, disc: 0, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
   };

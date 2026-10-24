@@ -7,7 +7,7 @@
 const GD_STORE = {
   name: 'GlobalDrop',
   tagline: 'Shop the World, Delivered to Your Door',
-  announcement: 'Free international shipping on orders over $75 · Free Pakistan delivery over $30',
+  announcement: 'Pakistan delivery Rs 139 per product · International shipping at actual courier freight + $1',
   commissionPct: 10, /* platform commission on seller sales */
   supportEmail: 'support@globaldrop.example',
   whatsapp: '0335-2710980'
@@ -172,7 +172,10 @@ function gdShipping(countryCode, subtotalUSD, rates, items){
       : 139;
     return feePKR / r;
   }
-  return subtotalUSD >= 75 ? 0 : 6.99;
+  /* No free tier (owner decision 2026-10-24: quote + $1 on ALL non-PK carts):
+     this flat $6.99 is only the pre-quote/fallback value; once a live CJ
+     freight quote lands, cartTotals uses quote + $1 instead. */
+  return 6.99;
 }
 function gdDeliveryDays(p, countryCode){
   const sup = p.supplier === 'Markaz' ? 'PK' : p.supplier; /* old CSV safety net: Markaz rows count as Pakistani local */
