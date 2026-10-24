@@ -553,10 +553,12 @@ function addToCart(id, color, size, qty){
 /* ---------- views ---------- */
 function homeView(){
   const avail = P().filter(inCountry);
-  const feat = avail.filter(p => p.featured).slice(0,8);
-  const news = avail.filter(p => p.isNew).slice(0,4);
-  const sale = avail.filter(p => p.sale && p.sale < p.price).slice(0,4);
-  const recent = S.recent.map(PROD).filter(p => p && inCountry(p)).slice(0,4);
+  const feat = avail.filter(p => p.featured);
+  const news = avail.filter(p => p.isNew);
+  const sale = avail.filter(p => p.sale && p.sale < p.price);
+  const pop = [...avail].sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
+  const newest = [...avail].sort((a,b)=>(new Date(b.created_at||0)-new Date(a.created_at||0)));
+  const recent = S.recent.map(PROD).filter(p => p && inCountry(p));
   const cats = gdCategories().map(ct => ({ct, n: avail.filter(p=>p.cat===ct.slug).length})).filter(x => x.n);
   $('#app').innerHTML = `
   <section class="hero" style="margin:0 -16px"><div class="wrap">
@@ -573,14 +575,16 @@ function homeView(){
   </div>
   <div class="sec"><h2>Shop by Category</h2><a href="#/shop">View all →</a></div>
   <div class="catgrid">${cats.map(x => `<a class="catcard" href="#/cat/${x.ct.slug}"><div class="ic">${x.ct.icon}</div><b>${esc(x.ct.name)}</b><small>${x.n} products</small></a>`).join('')}</div>
-  ${feat.length?`<div class="sec"><h2>⭐ Trending Products</h2><a href="#/shop">Shop all →</a></div><div class="pgrid">${feat.map(cardHTML).join('')}</div>`:''}
   <div class="banner2">
     ${sale.length?`<a class="promo" href="#/shop?sale=1" style="background-image:url('https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1000&q=80')"><h3>Sale &amp; Offers</h3><p>Genuine discounts on selected products — while stock lasts.</p></a>`:''}
     <a class="promo" href="#/cat/women-s-clothing" style="background-image:url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80')"><h3>New Season Styles</h3><p>Shop women's clothing and more — delivered to your door.</p></a>
   </div>
-  ${news.length?`<div class="sec"><h2>🆕 New Arrivals</h2><a href="#/shop?sort=new">View all →</a></div><div class="pgrid">${news.map(cardHTML).join('')}</div>`:''}
-  ${sale.length?`<div class="sec"><h2>🏷️ Bestselling Deals</h2></div><div class="pgrid">${sale.map(cardHTML).join('')}</div>`:''}
-  ${recent.length?`<div class="sec"><h2>Recently Viewed</h2></div><div class="pgrid">${recent.map(cardHTML).join('')}</div>`:''}
+  ${news.length?`<div class="sec"><h2>🆕 New Arrivals <small style="color:var(--mut);font-size:13px">(${news.length})</small></h2></div><div class="pgrid">${news.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?sort=new">More products →</a></div>`:''}
+  ${feat.length?`<div class="sec"><h2>⭐ Featured Products <small style="color:var(--mut);font-size:13px">(${feat.length})</small></h2></div><div class="pgrid">${feat.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?feat=1">More products →</a></div>`:''}
+  ${pop.length?`<div class="sec"><h2>🔥 Popular Products <small style="color:var(--mut);font-size:13px">(${pop.length})</small></h2></div><div class="pgrid">${pop.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?view=all">More products →</a></div>`:''}
+  ${newest.length?`<div class="sec"><h2>✨ Newest Products <small style="color:var(--mut);font-size:13px">(${newest.length})</small></h2></div><div class="pgrid">${newest.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?sort=added">More products →</a></div>`:''}
+  ${sale.length?`<div class="sec"><h2>🏷️ Bestselling Deals <small style="color:var(--mut);font-size:13px">(${sale.length})</small></h2></div><div class="pgrid">${sale.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?sale=1">More products →</a></div>`:''}
+  ${recent.length?`<div class="sec"><h2>👁️ Recently Viewed</h2></div><div class="pgrid">${recent.slice(0,30).map(cardHTML).join('')}</div><div style="text-align:center;margin:14px 0 26px"><a class="btn" href="#/shop?view=all">More products →</a></div>`:''}
   <div class="sec"><h2>What shoppers say</h2></div>
   <div class="empty"><div class="ic">⭐</div>Customer reviews will appear here once real orders are delivered and reviewed. We never publish invented testimonials.</div>`;
   window.scrollTo(0,0);
@@ -628,6 +632,7 @@ function shopView(params){
   if (sort === 'low') list.sort((a,b)=>effPrice(a)-effPrice(b));
   else if (sort === 'high') list.sort((a,b)=>effPrice(b)-effPrice(a));
   else if (sort === 'new') list.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0));
+  else if (sort === 'added') list.sort((a,b)=>(new Date(b.created_at||0)-new Date(a.created_at||0)));
   else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
   shopPageList = list; shopPageShown = Math.min(SHOP_PAGE, list.length);
   const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : (saleOnly ? 'Sale & Offers' : (featOnly ? 'Featured Products' : 'All Products')));
@@ -683,7 +688,8 @@ function shopView(params){
       <div class="toolbar"><h2 style="font-size:21px">${title} <small style="color:var(--mut);font-size:13px">(${list.length} products for ${esc(gdCountry(S.country).name)})</small></h2>
       <select class="sel" onchange="shopGo('sort',this.value)">
         <option value="pop" ${sort==='pop'?'selected':''}>Sort: Popular</option>
-        <option value="new" ${sort==='new'?'selected':''}>Sort: Newest</option>
+        <option value="new" ${sort==='new'?'selected':''}>Sort: New arrivals</option>
+        <option value="added" ${sort==='added'?'selected':''}>Sort: Newest first</option>
         <option value="low" ${sort==='low'?'selected':''}>Price: Low to High</option>
         <option value="high" ${sort==='high'?'selected':''}>Price: High to Low</option>
       </select></div>
@@ -725,7 +731,7 @@ let pdpSel = {color:'', size:'', qty:1};
 function productView(id){
   const p = PROD(id);
   if (!p) { $('#app').innerHTML = '<div class="empty" style="margin-top:26px"><div class="ic">📦</div>Product not found.</div>'; return; }
-  if (!S.recent.includes(id)) { S.recent.unshift(id); S.recent = S.recent.slice(0,8); gdSave('gd_recent', S.recent); }
+  if (!S.recent.includes(id)) { S.recent.unshift(id); S.recent = S.recent.slice(0,30); gdSave('gd_recent', S.recent); }
   pdpSel = {color:(p.colors||[])[0]||'', size:(p.sizes||[])[0]||'', qty:1};
   const off = (p.sale && p.sale < p.price) ? Math.round((1 - p.sale/p.price)*100) : 0;
   const ct = CAT(p.cat) || {name:p.cat, slug:p.cat};
