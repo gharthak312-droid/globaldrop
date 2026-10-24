@@ -194,6 +194,8 @@ table.spec td:first-child{color:var(--mut);width:170px}
 }
 .btn[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
 .sheet.qv{max-width:780px;position:relative}
+.sheet.co{max-width:940px;position:relative}
+@media (max-width:900px){ .modal .layout{grid-template-columns:1fr !important} }
 .qvgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .qvgrid>div:first-child img{width:100%;height:100%;max-height:340px;object-fit:cover;border-radius:12px}
 .qvX{position:absolute;top:10px;right:12px;background:#fff;border:1px solid #E3DDD0;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:15px;z-index:2}
@@ -383,6 +385,11 @@ table.spec td:first-child{color:var(--mut);width:170px}
 <div class="modal" id="qvModal"><div class="sheet qv">
   <button class="qvX" onclick="closeModal('qvModal')" aria-label="Close">✕</button>
   <div id="qvBody"></div>
+</div></div>
+
+<div class="modal" id="coModal"><div class="sheet co">
+  <button class="qvX" onclick="closeCheckout()" aria-label="Close">✕</button>
+  <div id="coBody"></div>
 </div></div>
 <div id="toast"></div>
 <script src="store-data.js?v=5"></script>
@@ -802,13 +809,12 @@ function cartQty(id, color, size, d){
 }
 function cartRemove(id, color, size){ S.cart = S.cart.filter(i => !(i.id===id && i.color===color && i.size===size)); gdSave('gd_cart', S.cart); paintChrome(); cartView(); }
 let payMethod = 'cod';
-function checkoutView(){
+function checkoutHTML(){
   const t = cartTotals();
-  if (!t.items.length) { location.hash = '#/cart'; return; }
   const c = gdCountry(S.country);
   const codOk = S.country === 'PK';
   if (!codOk && payMethod === 'cod') payMethod = 'card';
-  $('#app').innerHTML = `<div class="sec"><h2>Secure Checkout</h2></div>
+  return `<div class="sec"><h2>Secure Checkout</h2></div>
   <div class="layout" style="grid-template-columns:1fr 360px">
    <div>
     <div class="pagebox" style="margin:0 0 14px"><h3 style="margin-top:0">1 · Shipping details</h3>
@@ -835,11 +841,25 @@ function checkoutView(){
      <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
      <div style="font-size:12.5px;color:var(--mut);margin-top:8px">🚚 Estimated delivery: ${t.items.map(({p})=>gdDeliveryDays(p,S.country)).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
    </div></div>`;
-  window.scrollTo(0,0);
+}
+/* Checkout opens as a popup over the cart page, not as its own page. */
+function checkoutView(){
+  $('#coBody').innerHTML = checkoutHTML();
+}
+function openCheckout(){
+  const t = cartTotals();
+  if (!t.items.length) { location.hash = '#/cart'; return; }
+  cartView(); /* page behind the popup */
+  checkoutView();
+  openModal('coModal');
+}
+function closeCheckout(){
+  closeModal('coModal');
+  if ((location.hash || '') === '#/checkout') location.hash = '#/cart';
 }
 function placeOrder(){
   const foreign = S.cart.filter(i => { const p = PROD(i.id); return !p || !gdAvailable(p, S.country); });
-  if (foreign.length) { S.cart = S.cart.filter(i => !foreign.includes(i)); gdSave('gd_cart', S.cart); paintChrome(); toast('Some items are not available in ' + gdCountry(S.country).name + ' and were removed from your cart'); location.hash = '#/cart'; return; }
+  if (foreign.length) { S.cart = S.cart.filter(i => !foreign.includes(i)); gdSave('gd_cart', S.cart); paintChrome(); toast('Some items are not available in ' + gdCountry(S.country).name + ' and were removed from your cart'); closeModal('coModal'); location.hash = '#/cart'; return; }
   const g = id => $(id).value.trim();
   const name = g('#coName'), phone = g('#coPhone'), email = g('#coEmail'), addr = g('#coAddr'), city = g('#coCity');
   if (!name || !phone || !email || !addr || !city) { toast('Please fill all required fields (*)'); return; }
@@ -858,7 +878,7 @@ function placeOrder(){
   const prods = gdProducts();
   t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) { p.stock = Math.max(0, p.stock - ci.qty); gdDbPatchStock(p.id, p.stock); } });
   gdSave('gd_products', prods);
-  S.cart = []; gdSave('gd_cart', []); paintChrome();
+  S.cart = []; gdSave('gd_cart', []); paintChrome(); closeModal('coModal');
   location.hash = '#/confirm/' + order.id;
 }
 function confirmView(id){
@@ -1001,7 +1021,7 @@ function route(){
   if (parts[0] === 'cat' && parts[1]) return categoryView(parts[1], params);
   if (parts[0] === 'product' && parts[1]) return productView(parts[1]);
   if (parts[0] === 'cart') return cartView();
-  if (parts[0] === 'checkout') return checkoutView();
+  if (parts[0] === 'checkout') return openCheckout();
   if (parts[0] === 'confirm' && parts[1]) return confirmView(parts[1]);
   if (parts[0] === 'track') return trackView();
   if (parts[0] === 'wishlist') return wishlistView();
