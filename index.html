@@ -56,13 +56,13 @@ nav.cats{position:relative}
 #catNavNext,#catNavPrev{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:#fff;box-shadow:0 2px 8px rgba(10,20,40,.12);cursor:pointer;font-size:17px;line-height:1;z-index:2}
 #catNavNext{right:6px}
 #catNavPrev{left:6px}
-.hero{background:linear-gradient(120deg,#0b2447 0%,#123a6b 55%,#1b4f8a 100%);color:#fff;border-radius:0}
+.hero{background:linear-gradient(120deg,#0b2447 0%,#123a6b 55%,#1b4f8a 100%);color:#fff;border-radius:18px;box-shadow:0 18px 40px rgba(11,36,71,.22);overflow:hidden}
 .hero .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:center;padding:52px 16px}
 .hero h1{font-size:42px;line-height:1.12;letter-spacing:-1px}
 .hero h1 em{color:var(--gold2);font-style:normal}
 .hero p{color:#cdd8ea;margin:14px 0 22px;max-width:520px}
-.herocta{display:inline-block;background:var(--gold);color:#161106;font-weight:700;padding:13px 26px;border-radius:12px;font-size:15px}
-.herocta:hover{background:var(--gold2)}
+.herocta{display:inline-block;background:var(--gold);color:#161106;font-weight:700;padding:14px 30px;border-radius:999px;font-size:15px;box-shadow:0 10px 24px rgba(0,0,0,.25);transition:transform .15s,background .15s}
+.herocta:hover{background:var(--gold2);transform:translateY(-1px)}
 .heroimg{border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35)}
 .heroimg img{width:100%;height:300px;object-fit:cover}
 .trustrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}
@@ -224,7 +224,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .hero .wrap{padding:20px 16px 22px;gap:12px}
  .hero h1{font-size:24px}
  .hero p{font-size:13.5px;margin:9px 0 14px}
- .herocta{padding:10px 18px;font-size:13.5px;border-radius:11px}
+ .herocta{padding:11px 22px;font-size:13.5px;border-radius:999px}
  .heroimg{border-radius:14px}
  .heroimg img{height:150px}
  .trustrow{gap:8px;margin:14px 0}
@@ -561,11 +561,11 @@ function homeView(){
   const recent = S.recent.map(PROD).filter(p => p && inCountry(p));
   const cats = gdCategories().map(ct => ({ct, n: avail.filter(p=>p.cat===ct.slug).length})).filter(x => x.n);
   $('#app').innerHTML = `
-  <section class="hero" style="margin:0 -16px"><div class="wrap">
+  <section class="hero" style="margin:16px 0"><div class="wrap">
     <div><h1>Shop the world.<br><em>Delivered</em> to your door.</h1>
     <p>Thousands of products from verified global suppliers — prices in ${esc(S.cur)}, delivery estimates for ${esc(gdCountry(S.country).name)}, and buyer protection on every order.</p>
     <a class="herocta" href="#/shop">Start Shopping →</a></div>
-    <div class="heroimg"><img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=1000&q=80" alt="Shopping" onerror="this.onerror=null;this.src='https://picsum.photos/seed/hero/1000/700'"></div>
+    <div class="heroimg"><img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=80" alt="Headphones" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${GD_NOIMG}'"></div>
   </div></section>
   <div class="trustrow">
     <div class="trust"><span class="ic">🌍</span><div><b>Country-First Catalog</b><small>Only items deliverable to you</small></div></div>
