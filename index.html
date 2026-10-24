@@ -747,7 +747,7 @@ function productView(id){
   <div class="pdp">
     <div class="gal">${imgTag(p)}</div>
     <div>
-      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px"><span class="pill">SKU: ${esc(p.sku)}</span>${p.isNew?'<span class="chip new">NEW</span>':''}</div>
+      <div class="meta" style="display:flex;gap:6px;margin-bottom:8px">${p.isNew?'<span class="chip new">NEW</span>':''}</div>
       <h1>${esc(p.name)}</h1>
       <div style="margin:10px 0"><span class="big">${money(effPrice(p))}</span> ${off?`<s style="color:var(--mut)">${money(p.price)}</s> <span class="off">SAVE ${off}%</span>`:''}</div>
       <p style="color:var(--mut);font-size:13px">Price in ${esc(S.cur)} (converted from USD at today's rate). ${p.stock>0?`<b style="color:var(--green)">In stock (${p.stock} available)</b>`:'<b style="color:var(--red)">Out of stock</b>'}</p>
