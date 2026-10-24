@@ -575,7 +575,7 @@ function homeView(){
   <div class="catgrid">${cats.map(x => `<a class="catcard" href="#/cat/${x.ct.slug}"><div class="ic">${x.ct.icon}</div><b>${esc(x.ct.name)}</b><small>${x.n} products</small></a>`).join('')}</div>
   ${feat.length?`<div class="sec"><h2>⭐ Trending Products</h2><a href="#/shop">Shop all →</a></div><div class="pgrid">${feat.map(cardHTML).join('')}</div>`:''}
   <div class="banner2">
-    <a class="promo" href="#/shop?sale=1" style="background-image:url('https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1000&q=80')"><h3>Sale &amp; Offers</h3><p>Genuine discounts on selected products — while stock lasts.</p></a>
+    ${sale.length?`<a class="promo" href="#/shop?sale=1" style="background-image:url('https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1000&q=80')"><h3>Sale &amp; Offers</h3><p>Genuine discounts on selected products — while stock lasts.</p></a>`:''}
     <a class="promo" href="#/cat/women-s-clothing" style="background-image:url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80')"><h3>New Season Styles</h3><p>Shop women's clothing and more — delivered to your door.</p></a>
   </div>
   ${news.length?`<div class="sec"><h2>🆕 New Arrivals</h2><a href="#/shop?sort=new">View all →</a></div><div class="pgrid">${news.map(cardHTML).join('')}</div>`:''}
@@ -630,7 +630,7 @@ function shopView(params){
   else if (sort === 'new') list.sort((a,b)=>(b.isNew?1:0)-(a.isNew?1:0));
   else list.sort((a,b)=>(b.featured?1:0)-(a.featured?1:0));
   shopPageList = list; shopPageShown = Math.min(SHOP_PAGE, list.length);
-  const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : 'All Products');
+  const title = q ? `Search results for “${esc(params.get('q'))}”` : (catF ? esc((CAT(catF)||{}).name || 'Shop') : (saleOnly ? 'Sale & Offers' : (featOnly ? 'Featured Products' : 'All Products')));
   const catsAvail = gdCategories().map(ct => ({ct, n: P().filter(p=>p.cat===ct.slug && inCountry(p)).length})).filter(x=>x.n);
   /* Leaf (L3) browsing — when a category + subcategory are selected, the
      distinct leaf values of the products actually in that cat+sub.
@@ -689,7 +689,7 @@ function shopView(params){
       </select></div>
       ${subF?`<p style="margin-bottom:8px"><span class="pill">${esc(subF)}</span> <a href="#/cat/${catF}" style="font-size:13px;color:var(--navy);font-weight:600">✕ clear</a></p>`:''}
       ${leafChips}
-      ${showSections ? sectionsHTML : (list.length ? `<div class="pgrid" id="shopGrid">${list.slice(0, SHOP_PAGE).map(cardHTML).join('')}</div>${list.length > SHOP_PAGE ? `<div id="shopMoreWrap" style="text-align:center;margin:18px 0"><button class="btn" id="shopMoreBtn" onclick="shopMore()">Load more (${list.length - SHOP_PAGE} remaining)</button></div>` : ''}` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`)}
+      ${showSections ? sectionsHTML : (list.length ? `<div class="pgrid" id="shopGrid">${list.slice(0, SHOP_PAGE).map(cardHTML).join('')}</div>${list.length > SHOP_PAGE ? `<div id="shopMoreWrap" style="text-align:center;margin:18px 0"><button class="btn" id="shopMoreBtn" onclick="shopMore()">Load more (${list.length - SHOP_PAGE} remaining)</button></div>` : ''}` : (saleOnly ? `<div class="empty"><div class="ic">🏷️</div>No products are on sale right now. Check back soon — or <a href="#/shop">browse all products</a>.</div>` : `<div class="empty"><div class="ic">🔍</div>No products match. Try a different category, price range — or change your shipping country from the top bar.</div>`))}
     </div>
   </div>`;
   window.scrollTo(0,0);
