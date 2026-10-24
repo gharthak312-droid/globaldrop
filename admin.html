@@ -448,7 +448,7 @@ function vProducts(){
    <div class="f3">
     <div class="fld"><label>Stock</label><input id="pf-stock" type="number" value="50"></div>
     <div class="fld"><label>Image URL</label><input id="pf-img" placeholder="https://…"></div>
-    <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><select id="pf-sup" style="width:130px"><option value="CJ">CJ</option><option value="PK">PK Local</option></select><input id="pf-sku" placeholder="Supplier SKU"></div></div>
+    <div class="fld"><label>Supplier + SKU</label><div style="display:flex;gap:8px"><input id="pf-sup" list="supList" style="width:130px" placeholder="CJ"><datalist id="supList">${supStats().map(([s])=>`<option value="${esc(s)}">`).join('')}</datalist><input id="pf-sku" placeholder="Supplier SKU"></div></div>
    </div>
    <div class="f2">
     <div class="fld"><label>Country — har product sirf EK country ke liye</label><select id="pf-countries">${GD_COUNTRIES.map(c=>`<option value="${c.code}">${esc(c.name)}</option>`).join('')}</select><small class="hint">Product sirf isi country ke store me dikhega, aur sirf wahi ke customers khareed sakenge.</small></div>
@@ -474,16 +474,44 @@ function vProducts(){
    <tr><td>Rs 2,001 – 3,000</td><td><b>Profit Rs 400</b></td></tr>
    <tr><td>Rs 3,000 se upar</td><td><b>Profit Rs 500</b></td></tr></table>
    <p class="hint" style="margin:9px 0 0">Ye rates Markaz ki CSV banate waqt har product ki qeemat par auto lagte hain. (Yaad-dihani ke liye — rates 24 Oct 2026 ko tay hue.)</p></div>
-  <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
-   ${(adminShowAll ? prods : prods.slice(0, 200)).map(p=>`<tr><td><img class="th" src="${esc(p.img)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'"></td>
+  <div class="card" id="catalogWrap"></div>`;
+  if (editId) fillForm(editId); else pfSyncForm('', '');
+  renderCatalog();
+}
+/* ---------- admin catalog: supplier filter + name/SKU search ----------
+   Supplier options come from the catalog itself, so every future supplier
+   (new dropshipper / reseller) appears automatically — no code change.
+   Labels are admin-only (real names); customers never see this screen. */
+let supFilter = '', prodSearch = '';
+function supLabel(s){ return s === 'CJ' ? 'CJ (International)' : s === 'PK' ? 'Markaz (PK)' : (s || '—'); }
+function supStats(){ const m = {}; gdProducts().forEach(p => { const s = p.supplier || ''; if (!s) return; m[s] = (m[s]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+function setSupFilter(v){ supFilter = v; renderCatalog(); }
+function setProdSearch(v){ prodSearch = v; renderCatalog(); const el = $('#prodSearch'); if (el) { el.focus(); const l = el.value.length; try { el.setSelectionRange(l, l); } catch(e){} } }
+function renderCatalog(){
+  const prods = gdProducts();
+  let shown = prods;
+  if (supFilter) shown = shown.filter(p => p.supplier === supFilter);
+  if (prodSearch.trim()) { const q = prodSearch.trim().toLowerCase(); shown = shown.filter(p => (p.name||'').toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q)); }
+  const sups = supStats();
+  const wrap = $('#catalogWrap'); if (!wrap) return;
+  wrap.innerHTML = `<h3>Catalog (${shown.length} of ${prods.length})</h3>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px;align-items:center">
+    <label style="font-size:13px;font-weight:600">Supplier:</label>
+    <select onchange="setSupFilter(this.value)" style="padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px">
+      <option value="">All suppliers (${prods.length})</option>
+      ${sups.map(([s,n])=>`<option value="${esc(s)}" ${supFilter===s?'selected':''}>${esc(supLabel(s))} (${n})</option>`).join('')}
+    </select>
+    <input id="prodSearch" placeholder="Search name ya SKU…" value="${esc(prodSearch)}" oninput="setProdSearch(this.value)" style="flex:1;min-width:200px;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px">
+  </div>
+  <div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
+   ${(adminShowAll ? shown : shown.slice(0, 200)).map(p=>`<tr><td><img class="th" src="${esc(p.img)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'"></td>
    <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}${p.leaf?`<br><small class="hint">${esc(p.leaf)}</small>`:''}</td>
-   <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(p.supplier)}</td>
+   <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(supLabel(p.supplier))}</td>
    <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>
    <td style="white-space:nowrap"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button> <button class="btn sm red" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}
    </table></div>
-   ${prods.length > 200 && !adminShowAll ? `<button class="btn ghost" style="margin-top:12px" onclick="adminShowAll=true;vProducts()">Show all ${prods.length} products</button>` : ''}
-   <button class="btn ghost sm" style="margin-top:12px" onclick="resetCatalog()">Reset to demo catalog</button></div>`;
-  if (editId) fillForm(editId); else pfSyncForm('', '');
+   ${shown.length > 200 && !adminShowAll ? `<button class="btn ghost" style="margin-top:12px" onclick="adminShowAll=true;renderCatalog()">Show all ${shown.length} products</button>` : ''}
+   <button class="btn ghost sm" style="margin-top:12px" onclick="resetCatalog()">Reset to demo catalog</button>`;
 }
 function fillForm(id){
   const p = gdProducts().find(x=>x.id===id); if (!p) return;
@@ -503,7 +531,7 @@ function saveProduct(){
     name, cat: $('#pf-cat').value, sub: $('#pf-sub').value || 'General', leaf: $('#pf-leaf').value || '',
     price, sale: parseFloat($('#pf-sale').value) || null, stock: parseInt($('#pf-stock').value) || 0,
     img: $('#pf-img').value.trim() || 'https://picsum.photos/seed/'+Date.now()+'/800/800',
-    supplier: $('#pf-sup').value, sku: $('#pf-sku').value.trim(),
+    supplier: $('#pf-sup').value.trim() || 'CJ', sku: $('#pf-sku').value.trim(),
     countries: [$('#pf-countries').value || 'PK'],
     colors: (vparts[0]||'').split(',').map(s=>s.trim()).filter(Boolean),
     sizes: (vparts[1]||'').split(',').map(s=>s.trim()).filter(Boolean),
