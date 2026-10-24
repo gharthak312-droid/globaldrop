@@ -377,7 +377,7 @@ function vProducts(){
    <tr><td>Rs 3,000 se upar</td><td><b>Profit Rs 500</b></td></tr></table>
    <p class="hint" style="margin:9px 0 0">Ye rates Markaz ki CSV banate waqt har product ki qeemat par auto lagte hain. (Yaad-dihani ke liye — rates 24 Oct 2026 ko tay hue.)</p></div>
   <div class="card"><h3>Catalog (${prods.length})</h3><div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
-   ${(adminShowAll ? prods : prods.slice(0, 200)).map(p=>`<tr><td><img class="th" src="${esc(p.img)}" onerror="this.style.visibility='hidden'"></td>
+   ${(adminShowAll ? prods : prods.slice(0, 200)).map(p=>`<tr><td><img class="th" src="${esc(p.img)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'"></td>
    <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}${p.leaf?`<br><small class="hint">${esc(p.leaf)}</small>`:''}</td>
    <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(p.supplier)}</td>
    <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>

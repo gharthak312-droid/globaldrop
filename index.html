@@ -415,7 +415,14 @@ function listedFor(p){ if (!p || p.countries === 'ALL') return 'all countries'; 
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.style.display='block'; clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 2400); }
 function openModal(id){ $('#'+id).classList.add('open'); }
 function closeModal(id){ $('#'+id).classList.remove('open'); }
-function imgTag(p, cls){ return `<img ${cls?`class="${cls}"`:''} src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.onerror=null;this.src='https://picsum.photos/seed/${p.id}/800/800'">`; }
+/* Markaz's image CDN returns 403 when the browser sends a foreign Referer
+   (e.g. this store) — so product images MUST load with no Referer, or
+   every Markaz photo fails and the fallback below would show instead.
+   The fallback is a neutral "No image" placeholder: a store must never
+   show a random stock photo as a product picture (the old picsum fallback
+   showed houses/forests for makeup kits). */
+const GD_NOIMG = "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22800%22%20height=%22800%22%3E%3Crect%20width=%22800%22%20height=%22800%22%20fill=%22%23EDE8DD%22/%3E%3Ctext%20x=%2250%25%22%20y=%2250%25%22%20font-family=%22Arial%22%20font-size=%2236%22%20fill=%22%238A8378%22%20text-anchor=%22middle%22%3ENo%20image%3C/text%3E%3C/svg%3E";
+function imgTag(p, cls){ return `<img ${cls?`class="${cls}"`:''} src="${esc(p.img)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${GD_NOIMG}'">`; }
 
 /* ---------- header / chrome ---------- */
 function paintChrome(){
@@ -778,8 +785,93 @@ async function submitReview(pid){
 function cartTotals(){
   let sub = 0;
   const items = S.cart.map(ci => { const p = PROD(ci.id); if (!p) return null; const lt = effPrice(p) * ci.qty; sub += lt; return {ci, p, lt}; }).filter(Boolean);
-  const ship = items.length ? gdShipping(S.country, sub, S.rates, items.map(({ci}) => ci)) : 0;
+  /* Pakistan keeps its per-product Rs 139/70 math untouched. Non-PK carts
+     use a matching live CJ freight quote (actual freight + $1) when one is
+     present, else the flat fallback ($6.99, free over $75) — the quote is
+     fetched by the cart/checkout views, never here, so ordering never blocks. */
+  let ship = 0;
+  if (items.length) {
+    if (S.country === 'PK') ship = gdShipping(S.country, sub, S.rates, items.map(({ci}) => ci));
+    else {
+      const q = gdFreightQuoteFor();
+      ship = (q !== null) ? q : gdShipping(S.country, sub, S.rates);
+    }
+  }
   return {items, sub, ship, total: sub + ship};
+}
+
+/* ---------- CJ live freight quote (non-PK carts only) ----------
+   The flat $6.99 / free-over-$75 fallback renders immediately; the live
+   quote (CJ's actual cheapest freight + $1) refreshes the shipping line and
+   totals in place when it lands. Pakistan carts never touch this path.
+   Quotes are cached in-memory per cart signature (country + item ids/qtys);
+   a failed signature is remembered so repeat renders never spam CJ, and
+   checkout never blocks on a quote — placeOrder uses the quoted total only
+   when a matching quote is present, else the fallback total. */
+const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
+let __gdFreight = {sig: '', cost: null, pending: false};
+const __gdFreightFailed = new Set();
+function gdFreightCartItems(){
+  if (S.country === 'PK') return null;
+  const list = [];
+  for (const ci of S.cart) {
+    const p = PROD(ci.id);
+    if (!p || p.supplier !== 'CJ') return null; /* mixed/foreign cart: flat fallback */
+    list.push({ci, p});
+  }
+  return list.length ? list : null;
+}
+function gdFreightSig(list){
+  return S.country + '|' + list.map(({ci}) => [ci.id, ci.qty, ci.color || '', ci.size || ''].join('~')).join('|');
+}
+function gdFreightQuoteFor(){
+  const list = gdFreightCartItems();
+  if (!list) return null;
+  if (__gdFreight.cost !== null && __gdFreight.sig === gdFreightSig(list)) return __gdFreight.cost + 1;
+  return null;
+}
+function gdRefreshFreightUI(){
+  const t = cartTotals();
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('cartShipVal', t.ship === 0 ? 'FREE' : money(t.ship));
+  set('cartTotVal', money(t.total));
+  set('coShipVal', t.ship === 0 ? 'FREE' : money(t.ship));
+  set('coTotVal', money(t.total));
+  const btn = document.getElementById('coPlaceBtn');
+  if (btn) btn.textContent = 'Place Order — ' + money(t.total);
+}
+async function gdRequestFreight(){
+  const list = gdFreightCartItems();
+  if (!list) return;
+  const sig = gdFreightSig(list);
+  if (__gdFreight.pending && __gdFreight.sig === sig) return;
+  if (__gdFreight.cost !== null && __gdFreight.sig === sig) return;
+  if (__gdFreightFailed.has(sig)) return;
+  __gdFreight = {sig, cost: null, pending: true};
+  const fail = () => { if (__gdFreight.sig === sig) { __gdFreight = {sig: '', cost: null, pending: false}; __gdFreightFailed.add(sig); } };
+  try {
+    const ctl = new AbortController();
+    const to = setTimeout(() => ctl.abort(), 30000);
+    const fromCountry = (list[0].p.countries && list[0].p.countries[0]) || S.country;
+    const r = await fetch(GD_CJ_FN_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'freight-quote', fromCountry, destCountry: S.country,
+        items: list.map(({ci, p}) => ({id: ci.id, sku: p.sku || '', qty: ci.qty, color: ci.color || '', size: ci.size || ''}))}),
+      signal: ctl.signal,
+    });
+    clearTimeout(to);
+    const j = await r.json().catch(() => null);
+    if (j && j.ok === true && isFinite(Number(j.cost)) && Number(j.cost) >= 0) {
+      const now = gdFreightCartItems();
+      if (now && gdFreightSig(now) === sig && __gdFreight.sig === sig) {
+        __gdFreight = {sig, cost: Number(j.cost), pending: false};
+        gdRefreshFreightUI();
+      } else if (__gdFreight.sig === sig) {
+        __gdFreight = {sig: '', cost: null, pending: false}; /* cart moved on; quote discarded, not a failure */
+      }
+    } else fail();
+  } catch(e) { fail(); }
 }
 function cartView(){
   const t = cartTotals();
@@ -794,13 +886,14 @@ function cartView(){
       <b>${money(lt)}</b></div>`).join('')}</div>
     <div class="sumbox"><h3 style="margin-bottom:10px">Order Summary</h3>
       <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
-      <div class="line"><span>Delivery within ${esc(gdCountry(S.country).name)}</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
-      <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
+      <div class="line"><span>Delivery within ${esc(gdCountry(S.country).name)}</span><b id="cartShipVal">${t.ship===0?'FREE':money(t.ship)}</b></div>
+      <div class="line tot"><span>Total</span><span id="cartTotVal">${money(t.total)}</span></div>
       <small style="color:var(--mut)">Shown in ${esc(S.cur)}. Final charged currency depends on payment method.</small>
       <a class="btn gold" style="display:block;text-align:center;margin-top:14px" href="#/checkout">Proceed to Checkout →</a>
       <a class="btn ghost" style="display:block;text-align:center;margin-top:9px" href="#/shop">Continue shopping</a>
     </div></div>`}`;
   window.scrollTo(0,0);
+  gdRequestFreight(); /* non-PK carts: live CJ freight quote refreshes totals in place */
 }
 function cartQty(id, color, size, d){
   const it = S.cart.find(i => i.id===id && i.color===color && i.size===size); if (!it) return;
@@ -830,21 +923,22 @@ function checkoutHTML(){
       <label class="payopt ${payMethod==='cod'?'on':''} ${codOk?'':'dis'}"><input type="radio" name="pay" ${payMethod==='cod'?'checked':''} ${codOk?'':'disabled'} onchange="payMethod='cod';checkoutView()"><span><b>Cash on Delivery (COD)</b><small>${codOk?'Pay in PKR when your order arrives. Available in Pakistan only.':'Not available for '+esc(c.name)+' — COD works only inside Pakistan.'}</small></span></label>
       <label class="payopt dis"><input type="radio" name="pay" disabled><span><b>Card payment (Visa / Mastercard)</b><small>Being set up — card checkout will be activated once the payment provider account is connected.</small></span></label>
       
-      <button class="btn gold" style="width:100%;padding:14px;font-size:15px" onclick="placeOrder()">Place Order — ${money(t.total)}</button>
+      <button id="coPlaceBtn" class="btn gold" style="width:100%;padding:14px;font-size:15px" onclick="placeOrder()">Place Order — ${money(t.total)}</button>
       <p style="font-size:12.5px;color:var(--mut);margin-top:9px;text-align:center">By placing this order you agree to our <a href="#/page/terms" style="font-weight:600">Terms</a> and <a href="#/page/returns" style="font-weight:600">Returns policy</a>. You will only be charged the amount shown — no hidden fees.</p>
     </div>
    </div>
    <div class="sumbox"><h3 style="margin-bottom:10px">Your Order</h3>
      ${t.items.map(({ci,p,lt})=>`<div class="line"><span>${esc(p.name)} × ${ci.qty}</span><b>${money(lt)}</b></div>`).join('')}
      <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
-     <div class="line"><span>Shipping</span><b>${t.ship===0?'FREE':money(t.ship)}</b></div>
-     <div class="line tot"><span>Total</span><span>${money(t.total)}</span></div>
+     <div class="line"><span>Shipping</span><b id="coShipVal">${t.ship===0?'FREE':money(t.ship)}</b></div>
+     <div class="line tot"><span>Total</span><span id="coTotVal">${money(t.total)}</span></div>
      <div style="font-size:12.5px;color:var(--mut);margin-top:8px">🚚 Estimated delivery: ${t.items.map(({p})=>gdDeliveryDays(p,S.country)).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')}</div>
    </div></div>`;
 }
 /* Checkout opens as a popup over the cart page, not as its own page. */
 function checkoutView(){
   $('#coBody').innerHTML = checkoutHTML();
+  gdRequestFreight(); /* non-PK carts: live CJ freight quote refreshes totals in place */
 }
 function openCheckout(){
   const t = cartTotals();
@@ -923,7 +1017,7 @@ const PAGES = {
   about:{t:'About Us', b:`<p><b>GlobalDrop</b> is a single-seller online store run by its owner. We bring you products from international warehouses and from selected Pakistani suppliers — and every product is listed only for the country it can actually be delivered to, priced in your own currency.</p><h3>How it works</h3><ul><li>You order on GlobalDrop.</li><li>The supplier prepares and ships your order directly to you.</li><li>You track it here, and our buyer protection covers you if anything goes wrong.</li></ul><h3>Our suppliers</h3><p>Products are sourced from international warehouses and selected Pakistani suppliers, and shipped directly to your door — we never hold stock, which keeps prices low.</p>`},
   contact:{t:'Contact Us', b:`<p>We reply on WhatsApp — usually within a few hours.</p><ul><li><b>WhatsApp:</b> 0335-2710980</li>__CONTACT_EMAIL__<li><b>Hours:</b> Mon–Sat, 9am–9pm (PKT)</li></ul><p>For order questions, please include your order number (it starts with GD).</p>`},
   faq:{t:'Frequently Asked Questions', b:`<h3>Why do I only see some products?</h3><p>Our catalog is country-aware: you only see products that can be delivered to your selected shipping country. Change the country from the 🌍 selector at the top to see a different catalog.</p><h3>Why is my price in a different currency?</h3><p>Prices are converted from USD using daily exchange rates. The currency actually charged depends on your payment method — Cash on Delivery is always in local currency.</p><h3>How long does delivery take?</h3><p>Every product page shows an estimate for your country. Products listed for Pakistan arrive in 2–4 working days. Products listed for other countries are delivered within that country, usually in 5–9 working days.</p><h3>Can I pay cash on delivery?</h3><p>Yes — inside Pakistan. For other countries, card checkout is being activated with our payment provider.</p><h3>How do returns work?</h3><p>See our <a href="#/page/returns">Returns &amp; Refunds</a> page.</p>`},
-  shipping:{t:'Shipping & Delivery Policy', b:`<h3>Delivery areas & times</h3><ul><li><b>Pakistan:</b> 2–4 working days.</li><li><b>Other countries:</b> usually 5–9 working days. Every product is delivered within the country it is listed for — nothing is shipped from Pakistan to another country.</li></ul><h3>Shipping fees</h3><ul><li>Pakistan: Rs 139 per product + Rs 70 per additional item of the same product (Markaz courier charges).</li><li>Other countries: free on orders over $75, otherwise $6.99.</li></ul><h3>Tracking</h3><p>Every order gets a tracking number as soon as the supplier ships it. Track on the <a href="#/track">Track Order</a> page.</p><h3>Delays</h3><p>Customs or courier delays can occasionally extend delivery times. If an order does not arrive within 30 days, buyer protection gives you a full refund.</p>`},
+  shipping:{t:'Shipping & Delivery Policy', b:`<h3>Delivery areas & times</h3><ul><li><b>Pakistan:</b> 2–4 working days.</li><li><b>Other countries:</b> usually 5–9 working days. Every product is delivered within the country it is listed for — nothing is shipped from Pakistan to another country.</li></ul><h3>Shipping fees</h3><ul><li>Pakistan: Rs 139 per product + Rs 70 per additional item of the same product (Markaz courier charges).</li><li>Other countries: actual courier freight + $1 handling, calculated live at checkout.</li></ul><h3>Tracking</h3><p>Every order gets a tracking number as soon as the supplier ships it. Track on the <a href="#/track">Track Order</a> page.</p><h3>Delays</h3><p>Customs or courier delays can occasionally extend delivery times. If an order does not arrive within 30 days, buyer protection gives you a full refund.</p>`},
   returns:{t:'Returns & Refund Policy', b:`<h3>When you can return</h3><ul><li>Item arrived damaged, defective or different from the description.</li><li>Item never arrived within 30 days — full refund, no return needed.</li></ul><h3>How</h3><p>Contact us on WhatsApp within 7 days of delivery with your order number and a photo of the item. Approved refunds are issued to the original payment method (or Easypaisa/JazzCash for COD orders) within 5–7 working days after we receive the item or confirm the issue.</p><h3>Not returnable</h3><p>For hygiene reasons, opened personal-care items cannot be returned unless defective.</p>`},
   privacy:{t:'Privacy Policy', b:`<p>We collect only the data needed to run the store: your name, phone number, email address, delivery address and order history. Your browser also stores your cart, wishlist, selected country and currency, exchange-rate cache and an anonymous visitor id that lets us count visitors.</p><h3>How we use it</h3><p>We use your data to process orders, arrange delivery and provide support.</p><h3>Sharing</h3><p>Your delivery details are shared only with the supplier and courier handling your order, and with the payment provider at checkout. We never sell your personal data.</p><h3>Your rights</h3><p>You can ask for a copy of your data or its deletion at any time via the Contact page. Data deletion requests are processed within 7 working days.</p><h3>Cookies</h3><p>See the Cookie Policy page.</p>`},
   terms:{t:'Terms & Conditions', b:`<ul><li>GlobalDrop is a single-seller store run by its owner. There are no third-party sellers and no customer accounts — checkout is as a guest.</li><li>An order is confirmed when you receive an order number. We may cancel and refund orders for out-of-stock items or pricing errors.</li><li>Prices are displayed in your selected currency as estimates converted from USD; the final amount is always shown before you confirm.</li><li>Product images and descriptions come from suppliers; minor color/size variations can occur.</li><li>Each product is delivered within its own listed country only.</li><li>Customs duties, if charged by your country, are your responsibility unless the product page states otherwise.</li><li>Reviews are accepted only from verified purchases.</li></ul>`},
