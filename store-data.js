@@ -368,6 +368,10 @@ async function gdDbDeleteProduct(id){
   const res = await gdDb('products?id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'Prefer':'return=minimal'}});
   return res !== null;
 }
+async function gdDbDeleteOrder(id){
+  const res = await gdDb('orders?id=eq.' + encodeURIComponent(id), {method:'DELETE', headers:{'Prefer':'return=minimal'}});
+  return res !== null;
+}
 async function gdDbInsertProducts(list){
   if (!list.length) return true;
   const res = await gdDb('products?on_conflict=id', {method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify(list.map(gdProductToRow))});

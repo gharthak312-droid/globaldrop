@@ -63,12 +63,13 @@ small.hint{color:var(--mut);font-size:12px}
 </div>
 
 <main class="wrap hidden" id="panel">
+  <div id="curBar" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap"></div>
   <div class="tabs" id="tabs"></div>
   <div id="view"></div>
 </main>
 <div id="toast"></div>
 
-<script src="store-data.js?v=10"></script>
+<script src="store-data.js?v=11"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -149,7 +150,22 @@ function refreshOrders(){
   const now = Date.now(); if (now - __ordersRefreshAt < 20000) return; __ordersRefreshAt = now;
   gdDbFetchOrders().then(() => { if (curTab === 'orders' || curTab === 'overview') show(curTab); });
 }
-const fmtUSD = n => '$' + Number(n||0).toFixed(2);
+/* Admin money display: USD or Rs. The database ALWAYS stores USD — Rs is a
+   DISPLAY conversion at the storefront's live FX rate (shared 12h cache),
+   never a stored value, so customer prices and checkout are untouched. */
+let adminCur = gdLoad('gd_admin_cur', 'USD');
+let adminRates = null;
+function adminPkrRate(){ return (adminRates && adminRates.PKR) || (typeof GD_FALLBACK_RATES !== 'undefined' && GD_FALLBACK_RATES.PKR) || 280; }
+const fmtMoney = n => adminCur === 'Rs' ? 'Rs ' + Math.round(Number(n||0) * adminPkrRate()).toLocaleString('en-US') : '$' + Number(n||0).toFixed(2);
+const curLabel = () => adminCur === 'Rs' ? 'Rs' : 'USD';
+function renderCurBar(){
+  const el = $('#curBar'); if (!el) return;
+  el.innerHTML = `<span style="font-size:13px;font-weight:600">Currency:</span>
+    <button class="btn sm ${adminCur==='USD'?'gold':'ghost'}" onclick="setAdminCur('USD')">USD $</button>
+    <button class="btn sm ${adminCur==='Rs'?'gold':'ghost'}" onclick="setAdminCur('Rs')">Rs</button>
+    <span class="hint" style="font-size:12px">1 USD = Rs ${Math.round(adminPkrRate())} (live FX, display only — database me USD hi rehta hai)</span>`;
+}
+function setAdminCur(c){ adminCur = c; gdSave('gd_admin_cur', c); renderCurBar(); show(curTab); }
 
 function vOverview(){
   const os = orders(), prods = gdProducts();
@@ -158,28 +174,28 @@ function vOverview(){
   os.forEach(o => { byCountry[o.country] = (byCountry[o.country]||0) + o.total; });
   $('#view').innerHTML = `
   <div class="grid">
-    <div class="stat"><b>${fmtUSD(rev)}</b><small>Total revenue (USD, excl. cancelled/refunded)</small></div>
+    <div class="stat"><b>${fmtMoney(rev)}</b><small>Total revenue (${curLabel()}, excl. cancelled/refunded/deleted)</small></div>
     <div class="stat"><b>${os.length}</b><small>Total orders</small></div>
     <div class="stat"><b>${os.filter(o=>o.status==='Placed').length}</b><small>Orders awaiting action</small></div>
     <div class="stat"><b>${prods.length}</b><small>Products in catalog</small></div>
     <div class="stat"><b>${(gdDbReviewsCache() || gdLoad('gd_reviews',[])).length}</b><small>Customer reviews</small></div>
     <div class="stat"><b>${gdLoad('gd_newsletter',[]).length}</b><small>Newsletter subscribers</small></div>
-    <div class="stat"><b>${os.length?fmtUSD(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled'&&o.status!=='Deleted').length)):'$0.00'}</b><small>Average order value</small></div>
+    <div class="stat"><b>${os.length?fmtMoney(rev/Math.max(1,os.filter(o=>o.status!=='Cancelled'&&o.status!=='Deleted').length)):fmtMoney(0)}</b><small>Average order value</small></div>
     <div class="stat"><b>${prods.filter(p=>p.stock<=0).length}</b><small>Out-of-stock products</small></div>
   </div>
   <div class="card" style="margin-top:14px"><h3>Sales by country</h3>
-  ${Object.keys(byCountry).length ? Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc((gdCountry(c)||{}).name||c)}</span><b>${fmtUSD(v)}</b></div>`).join('') : '<p class="hint">No orders yet.</p>'}</div>
+  ${Object.keys(byCountry).length ? Object.entries(byCountry).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>${esc((gdCountry(c)||{}).name||c)}</span><b>${fmtMoney(v)}</b></div>`).join('') : '<p class="hint">No orders yet.</p>'}</div>
   <div class="card"><h3>Recent orders</h3>${os.length ? orderTable(os.slice(0,6), false) : '<p class="hint">No orders yet — orders placed on the store will appear here.</p>'}</div>`;
   refreshOrders();
 }
 function orderTable(os, full){
-  return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (USD)</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
+  return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (${curLabel()})</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
   ${os.map(o => `<tr><td><b>${esc(o.id)}</b></td><td>${new Date(o.at).toLocaleDateString('en-GB')}</td>
   <td>${esc(o.name)}<br><small class="hint">${esc(o.phone || o.email)}</small></td><td>${esc(o.country)}</td>
-  <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtUSD(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
+  <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtMoney(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
   <td>${full ? (o.status==='Deleted' ? `<span class="pill r">Deleted</span>${o.delReason?`<br><small class="hint">${esc(o.delReason)}</small>`:''}` : `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`) : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'||o.status==='Deleted'?'r':'y'}">${esc(o.status)}</span>`}</td>
   ${full?`<td>${o.status==='Deleted'?'—':`<input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no.">`}</td>
-  <td>${o.status==='Deleted' ? `<button class="btn sm ghost" onclick="restoreOrder('${o.id}')">Restore</button>` : `<button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button> <button class="btn sm red" onclick="delOrder('${o.id}')">Delete</button>${cjCell(o)}`}</td>`:''}</tr>`).join('')}</table></div>`;
+  <td>${o.status==='Deleted' ? `<button class="btn sm ghost" onclick="restoreOrder('${o.id}')">Restore</button> <button class="btn sm red" onclick="eraseOrder('${o.id}')">Erase permanently</button>` : `<button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button> <button class="btn sm red" onclick="delOrder('${o.id}')">Delete</button>${cjCell(o)}`}</td>`:''}</tr>`).join('')}</table></div>`;
 }
 function vOrders(){
   const os = orders();
@@ -228,6 +244,16 @@ function restoreOrder(id){
   o.status = target; o.delReason = ''; o.prevStatus = '';
   gdDbUpdateOrder(o, {status: target, delReason: '', prevStatus: ''});
   toast('Order ' + id + ' restored → ' + target); show(curTab);
+}
+/* Hard erase — only offered on already-Deleted rows (two-step safety).
+   Removes the DB row AND the local copy, so the order vanishes from the
+   admin list, stats and Track Order (there it becomes "not found"). */
+async function eraseOrder(id){
+  if (!confirm('Order ' + id + ' ko HAMESHA ke liye erase kar dun? Ye wapas nahi aayega — admin list, stats aur Track Order se poora chala jayega.')) return;
+  gdSave('gd_orders', gdLoad('gd_orders', []).filter(x=>x.id!==id));
+  await gdDbDeleteOrder(id);
+  await gdDbFetchOrders();
+  toast('Order ' + id + ' erased'); show(curTab);
 }
 /* CJ order push — orders containing real imported CJ products (item ids cj_*)
    get a "Send to CJ" button until the function has stored a cjOrderId on the
@@ -314,7 +340,7 @@ async function vStats(){
   /* ----- orders ----- */
   await gdDbFetchOrders();
   const os = orders();
-  const liveOs = os.filter(o => o.status !== 'Cancelled' && o.status !== 'Refunded');
+  const liveOs = os.filter(o => o.status !== 'Cancelled' && o.status !== 'Refunded' && o.status !== 'Deleted');
   const rates = await gdFetchRates();
   const usd = o => (o.total || 0) / ((rates && rates[o.cur]) || GD_FALLBACK_RATES[o.cur] || 1);
   const inP = (list, from) => list.filter(o => (o.at || 0) >= from);
@@ -362,20 +388,20 @@ async function vStats(){
   </div>
 
   <div class="card" style="margin-top:14px"><h3>🧾 Orders &amp; Revenue</h3>
-  <div style="overflow-x:auto"><table><tr><th>Period</th><th>Orders</th><th>Revenue (≈ USD)</th></tr>
-  ${periods.map(([label, from]) => `<tr><td>${label}</td><td><b>${inP(os, from).length}</b></td><td><b>≈ ${fmtUSD(revP(from))}</b></td></tr>`).join('')}
+  <div style="overflow-x:auto"><table><tr><th>Period</th><th>Orders</th><th>Revenue (≈ ${curLabel()})</th></tr>
+  ${periods.map(([label, from]) => `<tr><td>${label}</td><td><b>${inP(os, from).length}</b></td><td><b>≈ ${fmtMoney(revP(from))}</b></td></tr>`).join('')}
   </table></div>
-  <p class="hint" style="margin-top:8px">Revenue excludes cancelled/refunded orders. Non-USD orders are converted to USD at live exchange rates — is liye revenue takreeban (≈) hai.</p>
+  <p class="hint" style="margin-top:8px">Revenue excludes cancelled/refunded/deleted orders. Non-USD orders are converted to USD at live exchange rates — is liye revenue takreeban (≈) hai.</p>
   <div class="grid" style="margin-top:12px">
-    <div class="stat"><b>${fmtUSD(aovAll)}</b><small>Average order value — all time (≈ USD)</small></div>
-    <div class="stat"><b>${fmtUSD(aovToday)}</b><small>Average order value — today (≈ USD)</small></div>
+    <div class="stat"><b>${fmtMoney(aovAll)}</b><small>Average order value — all time (≈ ${curLabel()})</small></div>
+    <div class="stat"><b>${fmtMoney(aovToday)}</b><small>Average order value — today (≈ ${curLabel()})</small></div>
   </div></div>
 
   <div class="card"><h3>💰 Paisa — CJ hisaab</h3>
   <div class="grid" style="margin-top:10px">
-    <div class="stat"><b>${fmtUSD(cjCost)}</b><small>CJ ko diya — product + freight (${cjDone.length} CJ orders)</small></div>
-    <div class="stat"><b>≈ ${fmtUSD(cjRev)}</b><small>Un CJ orders ki revenue</small></div>
-    <div class="stat"><b>${fmtUSD(cjRev - cjCost)}</b><small>Mera munafa (sirf CJ orders)</small></div>
+    <div class="stat"><b>${fmtMoney(cjCost)}</b><small>CJ ko diya — product + freight (${cjDone.length} CJ orders)</small></div>
+    <div class="stat"><b>≈ ${fmtMoney(cjRev)}</b><small>Un CJ orders ki revenue</small></div>
+    <div class="stat"><b>${fmtMoney(cjRev - cjCost)}</b><small>Mera munafa (sirf CJ orders)</small></div>
     <div class="stat"><b>${cjPending}</b><small>CJ ko bhejna baqi (orders)</small></div>
   </div>
   <p class="hint" style="margin-top:8px">PK/local orders ka supplier kharcha system me nahi hota — is liye munafe ka hisaab sirf CJ orders par hai.${cjNoCost ? ' Note: ' + cjNoCost + ' CJ order(s) me CJ cost save nahi hai — un ka kharcha upar wale hisaab me shamil nahi.' : ''}</p></div>
@@ -506,7 +532,7 @@ function renderCatalog(){
   <div style="overflow-x:auto"><table><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Supplier</th><th>Countries</th><th></th></tr>
    ${(adminShowAll ? shown : shown.slice(0, 200)).map(p=>`<tr><td><img class="th" src="${esc(p.img)}" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'"></td>
    <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.sku||'')}</small></td><td>${esc(p.cat)} / ${esc(p.sub)}${p.leaf?`<br><small class="hint">${esc(p.leaf)}</small>`:''}</td>
-   <td>${p.sale?`<s>${fmtUSD(p.price)}</s> <b>${fmtUSD(p.sale)}</b>`:fmtUSD(p.price)}</td><td>${p.stock}</td><td>${esc(supLabel(p.supplier))}</td>
+   <td>${p.sale?`<s>${fmtMoney(p.price)}</s> <b>${fmtMoney(p.sale)}</b>`:fmtMoney(p.price)}</td><td>${p.stock}</td><td>${esc(supLabel(p.supplier))}</td>
    <td>${p.countries==='ALL'?'ALL':(p.countries||[]).join(', ')}</td>
    <td style="white-space:nowrap"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button> <button class="btn sm red" onclick="delProduct('${p.id}')">Delete</button></td></tr>`).join('')}
    </table></div>
@@ -713,6 +739,10 @@ window.addEventListener('gd:data', e => {
    a valid session + an unlocked flag reopens the panel directly — a
    refresh never logs the admin out; only the in-panel Logout does. */
 gdAdminRestore();
+renderCurBar();
+/* Shared live-FX cache with the storefront (same localStorage key): admin Rs
+   figures use the same rate the storefront shows, refreshed in place. */
+gdFetchRates().then(r => { adminRates = r; renderCurBar(); if (!$('#panel').classList.contains('hidden')) show(curTab); });
 </script>
 </body>
 </html>
