@@ -853,14 +853,16 @@ async function gdRequestFreight(){
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), 30000);
     const fromCountry = (list[0].p.countries && list[0].p.countries[0]) || S.country;
-    const r = await fetch(GD_CJ_FN_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: 'freight-quote', fromCountry, destCountry: S.country,
-        items: list.map(({ci, p}) => ({id: ci.id, sku: p.sku || '', qty: ci.qty, color: ci.color || '', size: ci.size || ''}))}),
-      signal: ctl.signal,
-    });
-    clearTimeout(to);
+    let r;
+    try {
+      r = await fetch(GD_CJ_FN_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'freight-quote', fromCountry, destCountry: S.country,
+          items: list.map(({ci, p}) => ({id: ci.id, sku: p.sku || '', qty: ci.qty, color: ci.color || '', size: ci.size || ''}))}),
+        signal: ctl.signal,
+      });
+    } finally { clearTimeout(to); }
     const j = await r.json().catch(() => null);
     if (j && j.ok === true && isFinite(Number(j.cost)) && Number(j.cost) >= 0) {
       const now = gdFreightCartItems();
@@ -913,7 +915,7 @@ function checkoutHTML(){
     <div class="pagebox" style="margin:0 0 14px"><h3 style="margin-top:0">1 · Shipping details</h3>
       <div class="f2"><div class="fld"><label>Full name *</label><input id="coName" value=""></div>
       <div class="fld"><label>Phone (with country code) *</label><input id="coPhone" placeholder="+92…"></div></div>
-      <div class="fld"><label>Email *</label><input id="coEmail" type="email" value=""></div>
+
       <div class="fld"><label>Street address *</label><input id="coAddr" placeholder="House, street, area"></div>
       <div class="f2"><div class="fld"><label>City *</label><input id="coCity"></div>
       <div class="fld"><label>Postal code</label><input id="coZip"></div></div>
@@ -955,14 +957,13 @@ function placeOrder(){
   const foreign = S.cart.filter(i => { const p = PROD(i.id); return !p || !gdAvailable(p, S.country); });
   if (foreign.length) { S.cart = S.cart.filter(i => !foreign.includes(i)); gdSave('gd_cart', S.cart); paintChrome(); toast('Some items are not available in ' + gdCountry(S.country).name + ' and were removed from your cart'); closeModal('coModal'); location.hash = '#/cart'; return; }
   const g = id => $(id).value.trim();
-  const name = g('#coName'), phone = g('#coPhone'), email = g('#coEmail'), addr = g('#coAddr'), city = g('#coCity');
-  if (!name || !phone || !email || !addr || !city) { toast('Please fill all required fields (*)'); return; }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Please enter a valid email'); return; }
+  const name = g('#coName'), phone = g('#coPhone'), addr = g('#coAddr'), city = g('#coCity');
+  if (!name || !phone || !addr || !city) { toast('Please fill all required fields (*)'); return; }
   const t = cartTotals();
   for (const {ci,p} of t.items) { if (ci.qty > p.stock) { toast('Not enough stock for ' + p.name); return; } }
   const orders = gdLoad('gd_orders', []);
   const order = {
-    id: gdUid('GD'), at: Date.now(), email, name, phone, addr, city, zip: g('#coZip'), country: S.country,
+    id: gdUid('GD'), at: Date.now(), email: '', name, phone, addr, city, zip: g('#coZip'), country: S.country,
     items: t.items.map(({ci,p,lt}) => ({id:p.id, name:p.name, img:p.img, qty:ci.qty, color:ci.color, size:ci.size, price:effPrice(p), lt, supplier:p.supplier, sku:p.sku})),
     sub: t.sub, disc: 0, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
   };
@@ -989,21 +990,24 @@ function renderConfirm(o){
     <div class="ic">✅</div><h2 style="color:var(--green)">Order placed — thank you, ${esc(o.name.split(' ')[0])}!</h2>
     <p style="margin-top:8px">Your order number is <b>${esc(o.id)}</b>.<br>Total: <b>${gdFmt(o.total, o.cur, S.rates)}</b> · Payment: <b>${o.payment==='cod'?'Cash on Delivery':'Card'}</b><br>
     ${o.payment==='cod'?'Please keep the amount ready — our rider/supplier will collect it on delivery.':'Our team will contact you on WhatsApp ('+esc(o.phone)+') to confirm and arrange delivery.'}<br>
-    Track it anytime on the <a href="#/track" style="font-weight:700;color:var(--navy)">Track Order</a> page with your order number and email.</p>
+    Track it anytime on the <a href="#/track" style="font-weight:700;color:var(--navy)">Track Order</a> page with your order number and phone number.</p>
     <br><a class="btn gold" href="#/shop">Continue Shopping</a></div>`;
   window.scrollTo(0,0);
 }
 function trackView(){
   $('#app').innerHTML = `<div class="sec"><h2>📦 Track Your Order</h2></div>
   <div class="pagebox" style="max-width:560px;margin:20px auto"><div class="fld"><label>Order number</label><input id="trId" placeholder="e.g. GDXXXXXX"></div>
-  <div class="fld"><label>Email used at checkout</label><input id="trEmail" type="email"></div>
+  <div class="fld"><label>Phone number used at checkout</label><input id="trPhone" type="tel" placeholder="+92…"></div>
   <button class="btn gold" style="width:100%" onclick="doTrack()">Track</button><div id="trOut" style="margin-top:16px"></div></div>`;
 }
 async function doTrack(){
-  const id = $('#trId').value.trim().toUpperCase(), em = $('#trEmail').value.trim().toLowerCase();
-  let o = gdAllOrdersMerged().find(x => x.id.toUpperCase() === id && (x.email || '').toLowerCase() === em);
-  if (!o) { const d = await gdDbGetOrder(id); if (d && (d.email || '').toLowerCase() === em) o = d; }
-  $('#trOut').innerHTML = o ? `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : '<p style="color:var(--red);font-weight:600">Order not found — check the number and email.</p>';
+  const id = $('#trId').value.trim().toUpperCase();
+  const dg = s => (s || '').replace(/\D/g, '');
+  const ph = dg($('#trPhone').value);
+  const match = o => { const op = dg(o.phone); return op && ph && (op === ph || op.slice(-10) === ph.slice(-10)); };
+  let o = gdAllOrdersMerged().find(x => x.id.toUpperCase() === id && match(x));
+  if (!o) { const d = await gdDbGetOrder(id); if (d && match(d)) o = d; }
+  $('#trOut').innerHTML = o ? `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : '<p style="color:var(--red);font-weight:600">Order not found — check the number and phone number.</p>';
 }
 function wishlistView(){
   const list = S.wish.map(PROD).filter(Boolean);

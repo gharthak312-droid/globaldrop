@@ -106,7 +106,7 @@ function vOverview(){
 function orderTable(os, full){
   return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (USD)</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
   ${os.map(o => `<tr><td><b>${esc(o.id)}</b></td><td>${new Date(o.at).toLocaleDateString('en-GB')}</td>
-  <td>${esc(o.name)}<br><small class="hint">${esc(o.email)}</small></td><td>${esc(o.country)}</td>
+  <td>${esc(o.name)}<br><small class="hint">${esc(o.phone || o.email)}</small></td><td>${esc(o.country)}</td>
   <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtUSD(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
   <td>${full ? `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>` : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'?'r':'y'}">${esc(o.status)}</span>`}</td>
   ${full?`<td><input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no."></td>
