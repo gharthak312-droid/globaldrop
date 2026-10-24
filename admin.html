@@ -189,10 +189,10 @@ function vOverview(){
   refreshOrders();
 }
 function orderTable(os, full){
-  return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Total (${curLabel()})</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
+  return `<div style="overflow-x:auto"><table><tr><th>Order</th><th>Date</th><th>Customer</th><th>Country</th><th>Items</th><th>Supplier</th><th>Total (${curLabel()})</th><th>Pay</th><th>Status</th>${full?'<th>Tracking</th><th></th>':''}</tr>
   ${os.map(o => `<tr><td><b>${esc(o.id)}</b></td><td>${new Date(o.at).toLocaleDateString('en-GB')}</td>
   <td>${esc(o.name)}<br><small class="hint">${esc(o.phone || o.email)}</small></td><td>${esc(o.country)}</td>
-  <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td><b>${fmtMoney(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
+  <td>${o.items.reduce((a,i)=>a+i.qty,0)}</td><td>${[...new Set((o.items||[]).map(i=>i.supplier).filter(Boolean))].map(supLabel).join(' + ') || '—'}</td><td><b>${fmtMoney(o.total)}</b></td><td>${o.payment==='cod'?'COD':'Card'}</td>
   <td>${full ? (o.status==='Deleted' ? `<span class="pill r">Deleted</span>${o.delReason?`<br><small class="hint">${esc(o.delReason)}</small>`:''}` : `<select onchange="setStatus('${o.id}',this.value)">${['Placed','Confirmed','Shipped','Delivered','Cancelled','Refunded'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>`) : `<span class="pill ${o.status==='Delivered'?'g':o.status==='Cancelled'||o.status==='Refunded'||o.status==='Deleted'?'r':'y'}">${esc(o.status)}</span>`}</td>
   ${full?`<td>${o.status==='Deleted'?'—':`<input style="width:130px;padding:6px;border:1.5px solid var(--line);border-radius:8px" id="trk-${o.id}" value="${esc(o.tracking||'')}" placeholder="Tracking no.">`}</td>
   <td>${o.status==='Deleted' ? `<button class="btn sm ghost" onclick="restoreOrder('${o.id}')">Restore</button> <button class="btn sm red" onclick="eraseOrder('${o.id}')">Erase permanently</button>` : `<button class="btn sm ghost" onclick="saveTracking('${o.id}')">Save</button> <button class="btn sm red" onclick="delOrder('${o.id}')">Delete</button>${cjCell(o)}`}</td>`:''}</tr>`).join('')}</table></div>`;
