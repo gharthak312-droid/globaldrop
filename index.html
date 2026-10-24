@@ -183,7 +183,9 @@ table.spec td:first-child{color:var(--mut);width:170px}
  .hero h1{font-size:31px}
  .trustrow{grid-template-columns:1fr 1fr}
  .layout{grid-template-columns:1fr}
- .filters{position:static}
+ /* Mobile: hide the shop filter panel — categories + suppliers already live
+    in the hamburger (☰) menu at this width, so the panel only pushes products down */
+ .filters{display:none}
  .pdp{grid-template-columns:1fr}
  .banner2{grid-template-columns:1fr}
  footer .cols{grid-template-columns:1fr 1fr}
