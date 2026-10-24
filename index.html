@@ -394,7 +394,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <div id="coBody"></div>
 </div></div>
 <div id="toast"></div>
-<script src="store-data.js?v=6"></script>
+<script src="store-data.js?v=7"></script>
 <script src="gd-track.js"></script>
 <script>
 /* ============ GlobalDrop storefront app ============ */
@@ -716,8 +716,7 @@ function productView(id){
   <div class="sec"><h2>Customer Reviews</h2></div>
   <div id="revList">${revs.length ? revs.map(revHTML).join('') : '<div class="empty"><div class="ic">⭐</div>No reviews yet for this product. Reviews appear here after real customers receive their orders.</div>'}</div>
   <div class="pagebox"><h3 style="margin-top:0">Write a review</h3>
-    <div class="f2"><div class="fld"><label>Your name</label><input id="revName" type="text"></div>
-    <div class="fld"><label>Your email (to verify your purchase)</label><input id="revEmail" type="email"></div></div>
+    <div class="fld"><label>Your name</label><input id="revName" type="text"></div>
     <div class="fld"><label>Your rating</label><select id="revStars" class="sel"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
     <div class="fld"><label>Review</label><textarea id="revText" rows="3" placeholder="How was the product quality and delivery?"></textarea></div>
     <button class="btn" onclick="submitReview('${p.id}')">Submit review</button>
@@ -769,15 +768,15 @@ function qvQty(d){ qvSel.qty = Math.max(1, Math.min(99, qvSel.qty + d)); $('#qvQ
 function qvAdd(buy){ addToCart(qvSel.id, qvSel.color, qvSel.size, qvSel.qty); closeModal('qvModal'); if (buy) location.hash = '#/checkout'; }
 
 async function submitReview(pid){
-  const name = $('#revName').value.trim(), email = $('#revEmail').value.trim().toLowerCase();
+  const name = $('#revName').value.trim();
   const text = $('#revText').value.trim();
-  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('Please add your name and a valid email'); return; }
+  if (!name) { toast('Please add your name'); return; }
   if (!text) { toast('Please write something first'); return; }
-  const bought = list => list.some(o => (o.email || '').toLowerCase() === email && (o.items || []).some(i => i.id === pid));
-  let verified = bought(gdAllOrdersMerged());
-  if (!verified) { await gdDbFetchOrders(); verified = bought(gdAllOrdersMerged()); }
-  const rev = {pid, name, stars: parseInt($('#revStars').value), text, verified, date: new Date().toLocaleDateString('en-GB')};
-  await gdDbPostReview(rev, email); /* cloud copy — local save below stays as fallback */
+  /* No email is collected any more (owner: end the email hassle), so purchase
+     verification is off — new reviews carry no Verified badge; older verified
+     reviews keep theirs. */
+  const rev = {pid, name, stars: parseInt($('#revStars').value), text, verified: false, date: new Date().toLocaleDateString('en-GB')};
+  await gdDbPostReview(rev); /* cloud copy — local save below stays as fallback */
   const revs = gdLoad('gd_reviews', []);
   revs.unshift(rev);
   gdSave('gd_reviews', revs); gdPushReviewCache(rev); toast('Review submitted — thank you!'); productView(pid);

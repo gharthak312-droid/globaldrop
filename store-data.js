@@ -392,8 +392,8 @@ async function gdDbUpdateOrder(o, patch){
   const res = await gdDb('orders?id=eq.' + encodeURIComponent(o.id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(body)});
   return res !== null;
 }
-async function gdDbPostReview(rev, email){
-  const row = {product_id:rev.pid, name:rev.name, email:email || '', rating:rev.stars, body:rev.text, verified:!!rev.verified};
+async function gdDbPostReview(rev){
+  const row = {product_id:rev.pid, name:rev.name, email:'', rating:rev.stars, body:rev.text, verified:!!rev.verified};
   const res = await gdDb('reviews', {method:'POST', headers:{'Prefer':'return=minimal'}, body: JSON.stringify(row)});
   return res !== null;
 }
