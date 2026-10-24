@@ -52,12 +52,7 @@ small.hint{color:var(--mut);font-size:12px}
     <div class="fld"><input id="adEmail" type="email" placeholder="Admin email" autocomplete="email"></div>
     <div class="fld"><input id="adPass" type="password" placeholder="Password" autocomplete="current-password"></div>
     <button class="btn gold" style="width:100%" onclick="tryAuth()">Sign in</button>
-    <p style="font-size:12.5px;color:var(--mut);margin-top:12px">No account yet? <a href="#" onclick="toggleSignup(true);return false">Create admin account</a> (needs the PIN + the admin email).</p>
-    <div id="signupBox" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-      <div class="fld"><input id="suPin" type="password" placeholder="Admin PIN (to authorize signup)" style="text-align:center;letter-spacing:4px"></div>
-      <button class="btn" style="width:100%" onclick="trySignup()">Create account</button>
-      <p style="font-size:12.5px;color:var(--mut);margin-top:10px"><a href="#" onclick="toggleSignup(false);return false">Back to sign in</a></p>
-    </div>
+    <p style="font-size:12.5px;color:var(--mut);margin-top:12px">Admin account Supabase Dashboard → Authentication → Users se banta hai (is page se nahi).</p>
   </div>
   <div id="pinBox" class="hidden">
     <p style="font-size:13px;color:var(--mut);margin-bottom:14px">Signed in as <b id="authEmail"></b> (email verified ✓)</p>
@@ -91,7 +86,6 @@ function gdAdminSession(){ try { return JSON.parse(localStorage.getItem('gd_admi
 function gdAdminSaveSession(s){ try { localStorage.setItem('gd_admin_session', JSON.stringify(s)); } catch(e){} window.GD_AUTH_TOKEN = s ? s.access_token : null; }
 function showAuthBox(){ $('#authBox').classList.remove('hidden'); $('#pinBox').classList.add('hidden'); }
 function showPinBox(email){ $('#authEmail').textContent = email; $('#authBox').classList.add('hidden'); $('#pinBox').classList.remove('hidden'); }
-function toggleSignup(on){ $('#signupBox').classList.toggle('hidden', !on); }
 async function gdAuthFetch(path, body){
   const r = await fetch(GD_AUTH_URL + path, {method:'POST', headers:{'apikey': GD_SB_KEY, 'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
   const j = await r.json().catch(() => null);
@@ -120,38 +114,27 @@ async function tryAuth(){
   gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: u.email});
   showPinBox(u.email); toast('Signed in — ab PIN dalo');
 }
-async function trySignup(){
-  const email = ($('#adEmail').value || '').trim().toLowerCase();
-  const pass = $('#adPass').value || '';
-  const sp = $('#suPin').value || '';
-  if (!GD_ADMIN_EMAILS.includes(email)) { toast('Sirf admin email se account ban sakta hai'); return; }
-  if (sp !== String(pin())) { toast('Wrong PIN — signup ke liye sahi admin PIN chahiye'); return; }
-  if (pass.length < 8) { toast('Password kam se kam 8 characters ka rakho'); return; }
-  const res = await gdAuthFetch('signup', {email, password: pass});
-  if (!res.ok) { toast('Signup fail ho gaya — dobara try karo'); return; }
-  toast('Account ban gaya — verification email bhej di gayi hai. Inbox me link par click karo, phir sign in karo.');
-  toggleSignup(false);
-}
-function authLogout(){ gdAdminSaveSession(null); $('#panel').classList.add('hidden'); $('#gate').classList.remove('hidden'); showAuthBox(); }
+function gdAdminOpenPanel(){ $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); }
+function authLogout(){ gdAdminSaveSession(null); try { localStorage.removeItem('gd_admin_unlocked'); } catch(e){} $('#panel').classList.add('hidden'); $('#gate').classList.remove('hidden'); showAuthBox(); }
 async function gdAdminRestore(){
   const s = gdAdminSession();
   if (!s || !s.access_token) { showAuthBox(); return; }
-  if (s.expires_at && s.expires_at > Date.now()) { window.GD_AUTH_TOKEN = s.access_token; showPinBox(s.email || ''); return; }
+  if (s.expires_at && s.expires_at > Date.now()) { window.GD_AUTH_TOKEN = s.access_token; if (localStorage.getItem('gd_admin_unlocked') === '1') gdAdminOpenPanel(); else showPinBox(s.email || ''); return; }
   if (s.refresh_token) {
     const res = await gdAuthFetch('token?grant_type=refresh_token', {refresh_token: s.refresh_token});
     if (res.ok && res.data && res.data.access_token) {
       gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: s.email});
-      showPinBox(s.email || ''); return;
+      if (localStorage.getItem('gd_admin_unlocked') === '1') gdAdminOpenPanel(); else showPinBox(s.email || '');
+      return;
     }
   }
   gdAdminSaveSession(null); showAuthBox();
 }
-function tryPin(){ const s = gdAdminSession(); if (!s || !s.access_token) { showAuthBox(); toast('Pehle sign in karo'); return; } if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
+function tryPin(){ const s = gdAdminSession(); if (!s || !s.access_token) { showAuthBox(); toast('Pehle sign in karo'); return; } if ($('#pinIn').value === String(pin())) { try { localStorage.setItem('gd_admin_unlocked','1'); } catch(e){} gdAdminOpenPanel(); } else toast('Wrong PIN'); }
 $('#pinIn').addEventListener('keydown', e => { if (e.key==='Enter') tryPin(); });
 $('#adPass').addEventListener('keydown', e => { if (e.key==='Enter') tryAuth(); });
 $('#adEmail').addEventListener('keydown', e => { if (e.key==='Enter') tryAuth(); });
-$('#suPin').addEventListener('keydown', e => { if (e.key==='Enter') trySignup(); });
-gdAdminRestore();
+
 
 const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['stats','📈 Stats'],['settings','⚙️ Settings']];
 let curTab = 'overview';
@@ -669,6 +652,10 @@ window.addEventListener('gd:data', e => {
   else if (k === 'orders' && (curTab === 'orders' || curTab === 'overview')) show(curTab);
   else if (k === 'reviews' && curTab === 'overview') vOverview();
 });
+/* Restore the admin session on load (runs last so show()/curTab exist):
+   a valid session + an unlocked flag reopens the panel directly — a
+   refresh never logs the admin out; only the in-panel Logout does. */
+gdAdminRestore();
 </script>
 </body>
 </html>
