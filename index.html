@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GlobalDrop — Shop the World, Delivered to Your Door</title>
-<meta name="description" content="GlobalDrop is an international dropshipping store: electronics, fashion, home, beauty and more — with country-specific delivery, local-currency prices and products from verified international suppliers and selected Pakistani suppliers.">
+<meta name="description" content="GlobalDrop is an international dropshipping store: electronics, fashion, home, beauty and more — with country-specific delivery, USD prices (PKR in Pakistan) and products from verified international suppliers and selected Pakistani suppliers.">
 <meta property="og:title" content="GlobalDrop — Shop the World">
-<meta property="og:description" content="International shopping with country-specific products, local currency prices and reliable delivery.">
+<meta property="og:description" content="International shopping with country-specific products, USD prices (PKR in Pakistan) and reliable delivery.">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://gharthak312-droid.github.io/globaldrop/">
 <script type="application/ld+json">
@@ -366,7 +366,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
     <div class="cols">
       <div>
         <div class="logo" style="color:#fff">Global<span>Drop</span></div>
-        <p style="font-size:13.5px;margin-top:10px;max-width:320px">International shopping from verified international suppliers and selected Pakistani suppliers. Country-specific products, local currency prices, doorstep delivery.</p>
+        <p style="font-size:13.5px;margin-top:10px;max-width:320px">International shopping from verified international suppliers and selected Pakistani suppliers. Country-specific products, USD prices (PKR in Pakistan), doorstep delivery.</p>
         <div class="newsrow"><input id="newsEmail" type="email" placeholder="Email for offers"><button class="btn gold sm" id="newsBtn">Join</button></div>
         <small id="newsMsg" style="color:#8b95a9"></small>
       </div>
@@ -375,7 +375,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
       <div><h4>Company</h4><a href="#/page/about">About Us</a><a href="#/page/privacy">Privacy Policy</a><a href="#/page/terms">Terms &amp; Conditions</a><a href="#/page/cookies">Cookie Policy</a></div>
     </div>
     <div class="fine">
-      <span>Prices are shown in your selected currency, converted from USD using daily exchange rates — conversions are estimates. The currency charged at checkout depends on the payment method you choose.</span>
+      <span>Prices are shown in USD, except in Pakistan where they are shown in PKR converted from USD using daily exchange rates. Card payments are charged in USD; Cash on Delivery in Pakistan is collected in PKR.</span>
       <span>© 2026 GlobalDrop. All rights reserved.</span>
     </div>
   </div>
@@ -492,7 +492,7 @@ async function setCountry(code){
      switcher button is hidden; this guard covers any other caller. */
   if (code !== S.country) { toast('Showing products for ' + gdCountry(S.country).name + ' only'); return; }
   S.country = code; gdSave('gd_country', code);
-  S.cur = gdCountry(code).cur;
+  S.cur = code === 'PK' ? gdCountry(code).cur : 'USD'; /* Whop checkout is USD: show USD everywhere except PK (COD in PKR). */
   /* Refetch products for the new country before re-rendering — the
      storefront DB cache only ever holds one country's products. */
   await gdDbLoadProducts(code);
@@ -750,7 +750,7 @@ function productView(id){
       <div class="meta" style="display:flex;gap:6px;margin-bottom:8px">${p.isNew?'<span class="chip new">NEW</span>':''}</div>
       <h1>${esc(p.name)}</h1>
       <div style="margin:10px 0"><span class="big">${money(effPrice(p))}</span> ${off?`<s style="color:var(--mut)">${money(p.price)}</s> <span class="off">SAVE ${off}%</span>`:''}</div>
-      <p style="color:var(--mut);font-size:13px">Price in ${esc(S.cur)} (converted from USD at today's rate). ${p.stock>0?`<b style="color:var(--green)">In stock (${p.stock} available)</b>`:'<b style="color:var(--red)">Out of stock</b>'}</p>
+      <p style="color:var(--mut);font-size:13px">${S.cur==='USD' ? 'Price in USD.' : 'Price in ' + esc(S.cur) + " (converted from USD at today's rate)."} ${p.stock>0?`<b style="color:var(--green)">In stock (${p.stock} available)</b>`:'<b style="color:var(--red)">Out of stock</b>'}</p>
       ${!avail?`<div class="infobox" style="border-color:#fda29b;background:#fff5f4">⚠️ This product cannot be delivered to ${esc(gdCountry(S.country).name)}. Change your shipping country from the top bar to check other destinations.</div>`:''}
       ${(p.colors&&p.colors.length)?`<div class="optrow"><b>Color: <span id="selColor">${esc(pdpSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===pdpSel.color?'on':''}" onclick="pdpPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
       ${(p.sizes&&p.sizes.length)?`<div class="optrow"><b>Size: <span id="selSize">${esc(pdpSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===pdpSel.size?'on':''}" onclick="pdpPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
@@ -1017,7 +1017,7 @@ function cartView(){
       <div class="line"><span>Subtotal</span><b>${money(t.sub)}</b></div>
       <div class="line"><span>Delivery within ${esc(gdCountry(S.country).name)}</span><b id="cartShipVal">${t.ship===0?'FREE':money(t.ship)}</b></div>
       <div class="line tot"><span>Total</span><span id="cartTotVal">${money(t.total)}</span></div>
-      <small style="color:var(--mut)">Shown in ${esc(S.cur)}. Final charged currency depends on payment method.</small>
+      <small style="color:var(--mut)">${S.cur==='USD' ? 'Shown in USD. You will be charged in USD.' : 'Shown in ' + esc(S.cur) + '. Final charged currency depends on payment method.'}</small>
       <a class="btn gold" style="display:block;text-align:center;margin-top:14px" href="#/checkout">Proceed to Checkout →</a>
       <a class="btn ghost" style="display:block;text-align:center;margin-top:9px" href="#/shop">Continue shopping</a>
     </div></div>`}`;
@@ -1147,13 +1147,13 @@ function wishlistView(){
 const PAGES = {
   about:{t:'About Us', b:`<p><b>GlobalDrop</b> is a single-seller online store run by its owner. We bring you products from international warehouses and from selected Pakistani suppliers — and every product is listed only for the country it can actually be delivered to, priced in your own currency.</p><h3>How it works</h3><ul><li>You order on GlobalDrop.</li><li>The supplier prepares and ships your order directly to you.</li><li>You track it here, and our buyer protection covers you if anything goes wrong.</li></ul><h3>Our suppliers</h3><p>Products are sourced from international warehouses and selected Pakistani suppliers, and shipped directly to your door — we never hold stock, which keeps prices low.</p>`},
   contact:{t:'Contact Us', b:`<p>We reply on WhatsApp — usually within a few hours.</p><ul><li><b>WhatsApp:</b> 0335-2710980</li>__CONTACT_EMAIL__<li><b>Hours:</b> Mon–Sat, 9am–9pm (PKT)</li></ul><p>For order questions, please include your order number (it starts with GD).</p>`},
-  faq:{t:'Frequently Asked Questions', b:`<h3>Why do I only see some products?</h3><p>Our catalog is country-aware: you only see products that can be delivered to your selected shipping country. Change the country from the 🌍 selector at the top to see a different catalog.</p><h3>Why is my price in a different currency?</h3><p>Prices are converted from USD using daily exchange rates. The currency actually charged depends on your payment method — Cash on Delivery is always in local currency.</p><h3>How long does delivery take?</h3><p>Every product page shows an estimate for your country. Products listed for Pakistan arrive in 2–4 working days. Products listed for other countries are delivered within that country, usually in 5–9 working days.</p><h3>Can I pay cash on delivery?</h3><p>Yes — inside Pakistan. For other countries, card checkout is being activated with our payment provider.</p><h3>How do returns work?</h3><p>See our <a href="#/page/returns">Returns &amp; Refunds</a> page.</p>`},
+  faq:{t:'Frequently Asked Questions', b:`<h3>Why do I only see some products?</h3><p>Our catalog is country-aware: you only see products that can be delivered to your selected shipping country. Change the country from the 🌍 selector at the top to see a different catalog.</p><h3>Why is my price in USD?</h3><p>Card checkout is processed in USD, so prices outside Pakistan are shown in USD — the amount you see is the amount charged. Inside Pakistan, prices are shown in PKR and Cash on Delivery is collected in PKR.</p><h3>How long does delivery take?</h3><p>Every product page shows an estimate for your country. Products listed for Pakistan arrive in 2–4 working days. Products listed for other countries are delivered within that country, usually in 5–9 working days.</p><h3>Can I pay cash on delivery?</h3><p>Yes — inside Pakistan. For other countries, card checkout is being activated with our payment provider.</p><h3>How do returns work?</h3><p>See our <a href="#/page/returns">Returns &amp; Refunds</a> page.</p>`},
   shipping:{t:'Shipping & Delivery Policy', b:`<h3>Delivery areas & times</h3><ul><li><b>Pakistan:</b> 2–4 working days.</li><li><b>Other countries:</b> usually 5–9 working days. Every product is delivered within the country it is listed for — nothing is shipped from Pakistan to another country.</li></ul><h3>Shipping fees</h3><ul><li>Pakistan: Rs 139 per product + Rs 70 per additional item of the same product (Markaz courier charges).</li><li>Other countries: actual courier freight + $1 handling, calculated live at checkout.</li></ul><h3>Tracking</h3><p>Every order gets a tracking number as soon as the supplier ships it. Track on the <a href="#/track">Track Order</a> page.</p><h3>Delays</h3><p>Customs or courier delays can occasionally extend delivery times. If an order does not arrive within 30 days, buyer protection gives you a full refund.</p>`},
   returns:{t:'Returns & Refund Policy', b:`<h3>When you can return</h3><ul><li>Item arrived damaged, defective or different from the description.</li><li>Item never arrived within 30 days — full refund, no return needed.</li></ul><h3>How</h3><p>Contact us on WhatsApp within 7 days of delivery with your order number and a photo of the item. Approved refunds are issued to the original payment method (or Easypaisa/JazzCash for COD orders) within 5–7 working days after we receive the item or confirm the issue.</p><h3>Not returnable</h3><p>For hygiene reasons, opened personal-care items cannot be returned unless defective.</p>`},
   privacy:{t:'Privacy Policy', b:`<p>We collect only the data needed to run the store: your name, phone number, email address, delivery address and order history. Your browser also stores your cart, wishlist, selected country and currency, exchange-rate cache and an anonymous visitor id that lets us count visitors.</p><h3>How we use it</h3><p>We use your data to process orders, arrange delivery and provide support.</p><h3>Sharing</h3><p>Your delivery details are shared only with the supplier and courier handling your order, and with the payment provider at checkout. We never sell your personal data.</p><h3>Your rights</h3><p>You can ask for a copy of your data or its deletion at any time via the Contact page. Data deletion requests are processed within 7 working days.</p><h3>Cookies</h3><p>See the Cookie Policy page.</p>`},
-  terms:{t:'Terms & Conditions', b:`<ul><li>GlobalDrop is a single-seller store run by its owner. There are no third-party sellers and no customer accounts — checkout is as a guest.</li><li>An order is confirmed when you receive an order number. We may cancel and refund orders for out-of-stock items or pricing errors.</li><li>Prices are displayed in your selected currency as estimates converted from USD; the final amount is always shown before you confirm.</li><li>Product images and descriptions come from suppliers; minor color/size variations can occur.</li><li>Each product is delivered within its own listed country only.</li><li>Customs duties, if charged by your country, are your responsibility unless the product page states otherwise.</li><li>Reviews are accepted only from verified purchases.</li></ul>`},
+  terms:{t:'Terms & Conditions', b:`<ul><li>GlobalDrop is a single-seller store run by its owner. There are no third-party sellers and no customer accounts — checkout is as a guest.</li><li>An order is confirmed when you receive an order number. We may cancel and refund orders for out-of-stock items or pricing errors.</li><li>Prices are displayed in USD, except in Pakistan where they are displayed in PKR converted from USD; the final amount is always shown before you confirm.</li><li>Product images and descriptions come from suppliers; minor color/size variations can occur.</li><li>Each product is delivered within its own listed country only.</li><li>Customs duties, if charged by your country, are your responsibility unless the product page states otherwise.</li><li>Reviews are accepted only from verified purchases.</li></ul>`},
   cookies:{t:'Cookie Policy', b:`<p>We use browser storage for essentials: your cart, wishlist, selected country/currency and exchange-rate cache. Analytics or marketing cookies, if added later, will only run with your consent. You can clear this data anytime from your browser settings.</p>`},
-  payment:{t:'Payment Information', b:`<h3>Cash on Delivery (Pakistan)</h3><p>Pay in PKR when your order arrives. Available for deliveries inside Pakistan.</p><h3>Card payments (international)</h3><p>Online card checkout is being activated with our payment providers. When live, payments are processed by the provider on their secure pages — GlobalDrop never sees or stores your card number.</p><h3>Currency</h3><p>Displayed prices are converted from USD using daily exchange rates and are estimates. The final charged currency and amount are always shown at checkout before you confirm.</p>`}
+  payment:{t:'Payment Information', b:`<h3>Cash on Delivery (Pakistan)</h3><p>Pay in PKR when your order arrives. Available for deliveries inside Pakistan.</p><h3>Card payments (international)</h3><p>Online card checkout is being activated with our payment providers. When live, payments are processed by the provider on their secure pages — GlobalDrop never sees or stores your card number.</p><h3>Currency</h3><p>Prices are displayed in USD, except in Pakistan where they are displayed in PKR. Card payments are charged in USD; Cash on Delivery in Pakistan is collected in PKR. The final charged amount is always shown at checkout before you confirm.</p>`}
 };
 const GD_EMAIL_PLACEHOLDER = 'support@globaldrop.example';
 function pageView(slug){
@@ -1291,7 +1291,7 @@ window.addEventListener('hashchange', route);
   const det = await detectCountry();
   if (det) { S.country = det; gdSave('gd_country', S.country); }
   else if (!S.country) { S.country = 'US'; gdSave('gd_country', S.country); }
-  S.cur = gdCountry(S.country).cur;
+  S.cur = S.country === 'PK' ? gdCountry(S.country).cur : 'USD'; /* Whop checkout is USD: show USD everywhere except PK (COD in PKR). */
   /* If the startup DB load fetched a different country (or is still running
      for one), fetch this country now — its emit re-renders when it lands. */
   gdDbLoadProductsIfNeeded(S.country);
