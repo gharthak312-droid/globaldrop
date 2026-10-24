@@ -155,13 +155,23 @@ function gdCategories(){
 }
 function gdCountry(code){ return GD_COUNTRIES.find(c => c.code === code) || GD_COUNTRIES[0]; }
 function gdAvailable(p, code){ return p.countries === 'ALL' ? true : (Array.isArray(p.countries) && p.countries.includes(code)); }
-function gdShipping(countryCode, subtotalUSD, rates){
+function gdShipping(countryCode, subtotalUSD, rates, items){
   if (subtotalUSD <= 0) return 0;
-  /* Pakistan: Markaz charges a flat Rs 99 delivery, no free tier — so the
-     store charges exactly that. Returned as its USD equivalent at the
-     current PKR rate, so the PKR display is exactly Rs 99 (PKR rounds to
-     whole rupees). Other countries keep the CJ-freight model below. */
-  if (countryCode === 'PK') { const r = (rates && rates.PKR) || GD_FALLBACK_RATES.PKR || 280; return 99 / r; }
+  /* Pakistan: Markaz charges PER PRODUCT — Rs 139 for the first item of a
+     product + Rs 70 per additional item of the same product (verified on
+     Markaz product pages across categories and prices; listing pages do
+     not carry this figure). Returned as its USD equivalent at the current
+     PKR rate, so the PKR display is exact (PKR rounds to whole rupees).
+     Other countries keep the CJ-freight model below (live CJ freight
+     quotes replace it separately). */
+  if (countryCode === 'PK') {
+    const r = (rates && rates.PKR) || GD_FALLBACK_RATES.PKR || 280;
+    const list = Array.isArray(items) ? items : [];
+    const feePKR = list.length
+      ? list.reduce((s, it) => s + 139 + 70 * (Math.max(1, Number(it.qty || it.ci?.qty || 1)) - 1), 0)
+      : 139;
+    return feePKR / r;
+  }
   return subtotalUSD >= 75 ? 0 : 6.99;
 }
 function gdDeliveryDays(p, countryCode){
