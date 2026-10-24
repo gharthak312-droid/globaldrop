@@ -120,7 +120,8 @@ footer .fine{border-top:1px solid #26314a;padding:16px 0 22px;font-size:12.5px;c
 .filters{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;height:fit-content;position:sticky;top:130px;max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .filters h4{font-size:13px;text-transform:uppercase;letter-spacing:.6px;margin:14px 0 8px;color:var(--mut)}
 .filters h4:first-child{margin-top:0}
-.filters label{display:flex;gap:8px;font-size:13.5px;padding:3.5px 0;align-items:center;cursor:pointer}
+.filters label{display:flex;gap:8px;font-size:13.5px;padding:3.5px 8px;align-items:center;cursor:pointer}
+.filters label.act{background:rgba(201,162,39,.16);border-radius:8px;font-weight:600}
 .filters input[type=number]{width:100%;padding:8px;border:1.5px solid var(--line);border-radius:9px;font-size:13px}
 select.sel{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;background:#fff}
 .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap}
@@ -636,16 +637,16 @@ function shopView(params){
   <div class="layout">
     <aside class="filters">
       <h4>Categories</h4>
-      <label><input type="radio" name="fcat" ${!catF?'checked':''} onchange="shopGo('cat','')"> All categories</label>
-      ${catsAvail.map(x=>`<label><input type="radio" name="fcat" ${catF===x.ct.slug?'checked':''} onchange="shopGo('cat','${x.ct.slug}')"> ${esc(x.ct.name)} (${x.n})</label>`).join('')}
+      <label class="${!catF?'act':''}"><input type="radio" name="fcat" ${!catF?'checked':''} onchange="shopGo('cat','')"> All categories</label>
+      ${catsAvail.map(x=>`<label class="${catF===x.ct.slug?'act':''}"><input type="radio" name="fcat" ${catF===x.ct.slug?'checked':''} onchange="shopGo('cat','${x.ct.slug}')"> ${esc(x.ct.name)} (${x.n})</label>`).join('')}
       <h4>Supplier</h4>
-      <label><input type="radio" name="fsup" ${!supF?'checked':''} onchange="shopGo('sup','')"> All suppliers</label>
-      ${supList().map(v=>`<label><input type="radio" name="fsup" ${supF===v?'checked':''} onchange="shopGo('sup','${v}')"> ${esc(supLabel(v))}</label>`).join('')}
+      <label class="${!supF?'act':''}"><input type="radio" name="fsup" ${!supF?'checked':''} onchange="shopGo('sup','')"> All suppliers</label>
+      ${supList().map(v=>`<label class="${supF===v?'act':''}"><input type="radio" name="fsup" ${supF===v?'checked':''} onchange="shopGo('sup','${v}')"> ${esc(supLabel(v))}</label>`).join('')}
       <h4>Price (USD)</h4>
       <div class="f2"><input type="number" id="fMin" placeholder="Min" value="${isNaN(minP)?'':minP}"><input type="number" id="fMax" placeholder="Max" value="${isNaN(maxP)?'':maxP}"></div>
       <button class="btn ghost sm" style="margin-top:9px;width:100%" onclick="shopPrice()">Apply price</button>
       <h4>Offers</h4>
-      <label><input type="checkbox" ${saleOnly?'checked':''} onchange="shopGo('sale',this.checked?'1':'')"> On sale only</label>
+      <label class="${saleOnly?'act':''}"><input type="checkbox" ${saleOnly?'checked':''} onchange="shopGo('sale',this.checked?'1':'')"> On sale only</label>
     </aside>
     <div>
       <div class="toolbar"><h2 style="font-size:21px">${title} <small style="color:var(--mut);font-size:13px">(${list.length} products for ${esc(gdCountry(S.country).name)})</small></h2>
