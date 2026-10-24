@@ -42,14 +42,29 @@ small.hint{color:var(--mut);font-size:12px}
 </head>
 <body>
 <header><div class="wrap"><div class="logo">Global<span>Drop</span> <small style="font-family:Inter;font-weight:500;font-size:12px;color:#9aa5bb">ADMIN</small></div>
-<a href="index.html" style="color:#fff;font-size:13.5px;font-weight:600">← View Store</a></div></header>
+<div style="display:flex;gap:10px;align-items:center"><a href="index.html" style="color:#fff;font-size:13.5px;font-weight:600">← View Store</a><button class="btn gold sm" onclick="authLogout()">Logout</button></div></div></header>
 
 <div class="gate" id="gate">
   <div style="font-size:34px">🔐</div>
   <h2 style="margin:8px 0 4px">Admin Login</h2>
-  <p style="color:var(--mut);font-size:13px;margin-bottom:14px">Enter the admin PIN to continue. (Default: 1234 — change it in Settings.)<br><small>Demo protection only — production will use Supabase Auth.</small></p>
-  <div class="fld"><input id="pinIn" type="password" placeholder="PIN" style="text-align:center;font-size:17px;letter-spacing:4px"></div>
-  <button class="btn gold" style="width:100%" onclick="tryPin()">Unlock</button>
+  <p style="color:var(--mut);font-size:13px;margin-bottom:14px">Sign in with your verified admin email, then enter the PIN. Both are required — PIN alone no longer opens the panel.</p>
+  <div id="authBox">
+    <div class="fld"><input id="adEmail" type="email" placeholder="Admin email" autocomplete="email"></div>
+    <div class="fld"><input id="adPass" type="password" placeholder="Password" autocomplete="current-password"></div>
+    <button class="btn gold" style="width:100%" onclick="tryAuth()">Sign in</button>
+    <p style="font-size:12.5px;color:var(--mut);margin-top:12px">No account yet? <a href="#" onclick="toggleSignup(true);return false">Create admin account</a> (needs the PIN + the admin email).</p>
+    <div id="signupBox" class="hidden" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <div class="fld"><input id="suPin" type="password" placeholder="Admin PIN (to authorize signup)" style="text-align:center;letter-spacing:4px"></div>
+      <button class="btn" style="width:100%" onclick="trySignup()">Create account</button>
+      <p style="font-size:12.5px;color:var(--mut);margin-top:10px"><a href="#" onclick="toggleSignup(false);return false">Back to sign in</a></p>
+    </div>
+  </div>
+  <div id="pinBox" class="hidden">
+    <p style="font-size:13px;color:var(--mut);margin-bottom:14px">Signed in as <b id="authEmail"></b> (email verified ✓)</p>
+    <div class="fld"><input id="pinIn" type="password" placeholder="PIN" style="text-align:center;font-size:17px;letter-spacing:4px"></div>
+    <button class="btn gold" style="width:100%" onclick="tryPin()">Unlock</button>
+    <button class="btn ghost" style="width:100%;margin-top:9px" onclick="authLogout()">Use a different account</button>
+  </div>
 </div>
 
 <main class="wrap hidden" id="panel">
@@ -58,14 +73,85 @@ small.hint{color:var(--mut);font-size:12px}
 </main>
 <div id="toast"></div>
 
-<script src="store-data.js?v=8"></script>
+<script src="store-data.js?v=9"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2300); }
 const pin = () => gdLoad('gd_admin_pin','1234');
-function tryPin(){ if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
+/* ---------- Admin auth: Supabase Auth (email + password) + mandatory email
+   verification + allowlist, with the existing PIN as a second layer. The panel
+   never opens on PIN alone any more. Sessions live in localStorage
+   (gd_admin_session); DB calls use the session token (window.GD_AUTH_TOKEN)
+   so that, once the RLS lockdown SQL is run, admin writes travel as
+   role=authenticated while the public storefront keeps the anon key. */
+const GD_ADMIN_EMAILS = ['wadoodalizai@gmail.com'];
+const GD_AUTH_URL = GD_SB_URL + '/auth/v1/';
+function gdAdminSession(){ try { return JSON.parse(localStorage.getItem('gd_admin_session') || 'null'); } catch(e){ return null; } }
+function gdAdminSaveSession(s){ try { localStorage.setItem('gd_admin_session', JSON.stringify(s)); } catch(e){} window.GD_AUTH_TOKEN = s ? s.access_token : null; }
+function showAuthBox(){ $('#authBox').classList.remove('hidden'); $('#pinBox').classList.add('hidden'); }
+function showPinBox(email){ $('#authEmail').textContent = email; $('#authBox').classList.add('hidden'); $('#pinBox').classList.remove('hidden'); }
+function toggleSignup(on){ $('#signupBox').classList.toggle('hidden', !on); }
+async function gdAuthFetch(path, body){
+  const r = await fetch(GD_AUTH_URL + path, {method:'POST', headers:{'apikey': GD_SB_KEY, 'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => null);
+  return {ok: r.ok, data: j};
+}
+async function gdAuthUser(token){
+  try {
+    const r = await fetch(GD_AUTH_URL + 'user', {headers:{'apikey': GD_SB_KEY, 'Authorization':'Bearer ' + token}});
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e){ return null; }
+}
+async function tryAuth(){
+  const email = ($('#adEmail').value || '').trim().toLowerCase();
+  const pass = $('#adPass').value || '';
+  if (!email || !pass) { toast('Email + password donon likho'); return; }
+  const res = await gdAuthFetch('token?grant_type=password', {email, password: pass});
+  if (!res.ok || !res.data || !res.data.access_token) {
+    if (res.data && (res.data.error_code === 'email_not_confirmed' || res.data.error === 'email_not_confirmed')) { toast('Email abhi verify nahi hui — inbox me verification link par click karo, phir sign in karo'); return; }
+    toast('Sign in fail — email/password check karo'); return;
+  }
+  const u = await gdAuthUser(res.data.access_token);
+  if (!u) { toast('Session verify nahi hui — dobara try karo'); return; }
+  if (!GD_ADMIN_EMAILS.includes((u.email || '').toLowerCase())) { toast('Ye email admin ke liye allowed nahi hai'); return; }
+  if (!u.email_confirmed_at) { toast('Email abhi verify nahi hui — inbox me verification link par click karo, phir sign in karo'); return; }
+  gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: u.email});
+  showPinBox(u.email); toast('Signed in — ab PIN dalo');
+}
+async function trySignup(){
+  const email = ($('#adEmail').value || '').trim().toLowerCase();
+  const pass = $('#adPass').value || '';
+  const sp = $('#suPin').value || '';
+  if (!GD_ADMIN_EMAILS.includes(email)) { toast('Sirf admin email se account ban sakta hai'); return; }
+  if (sp !== String(pin())) { toast('Wrong PIN — signup ke liye sahi admin PIN chahiye'); return; }
+  if (pass.length < 8) { toast('Password kam se kam 8 characters ka rakho'); return; }
+  const res = await gdAuthFetch('signup', {email, password: pass});
+  if (!res.ok) { toast('Signup fail ho gaya — dobara try karo'); return; }
+  toast('Account ban gaya — verification email bhej di gayi hai. Inbox me link par click karo, phir sign in karo.');
+  toggleSignup(false);
+}
+function authLogout(){ gdAdminSaveSession(null); $('#panel').classList.add('hidden'); $('#gate').classList.remove('hidden'); showAuthBox(); }
+async function gdAdminRestore(){
+  const s = gdAdminSession();
+  if (!s || !s.access_token) { showAuthBox(); return; }
+  if (s.expires_at && s.expires_at > Date.now()) { window.GD_AUTH_TOKEN = s.access_token; showPinBox(s.email || ''); return; }
+  if (s.refresh_token) {
+    const res = await gdAuthFetch('token?grant_type=refresh_token', {refresh_token: s.refresh_token});
+    if (res.ok && res.data && res.data.access_token) {
+      gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: s.email});
+      showPinBox(s.email || ''); return;
+    }
+  }
+  gdAdminSaveSession(null); showAuthBox();
+}
+function tryPin(){ const s = gdAdminSession(); if (!s || !s.access_token) { showAuthBox(); toast('Pehle sign in karo'); return; } if ($('#pinIn').value === String(pin())) { $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); } else toast('Wrong PIN'); }
 $('#pinIn').addEventListener('keydown', e => { if (e.key==='Enter') tryPin(); });
+$('#adPass').addEventListener('keydown', e => { if (e.key==='Enter') tryAuth(); });
+$('#adEmail').addEventListener('keydown', e => { if (e.key==='Enter') tryAuth(); });
+$('#suPin').addEventListener('keydown', e => { if (e.key==='Enter') trySignup(); });
+gdAdminRestore();
 
 const TABS = [['overview','📊 Overview'],['products','📦 Products'],['orders','🧾 Orders'],['stats','📈 Stats'],['settings','⚙️ Settings']];
 let curTab = 'overview';
@@ -180,7 +266,7 @@ function gdDayStartPkt(ts){ const p = gdPktParts(ts); return Date.UTC(p.y, p.m -
    missing/unreachable so the Stats view can degrade gracefully. */
 async function gdCount(path){
   try {
-    const r = await fetch(GD_SB + path, {headers:{'apikey':GD_SB_KEY, 'Authorization':'Bearer ' + GD_SB_KEY, 'Prefer':'count=exact', 'Range-Unit':'items', 'Range':'0-0'}});
+    const r = await fetch(GD_SB + path, {headers:{'apikey':GD_SB_KEY, 'Authorization':'Bearer ' + (window.GD_AUTH_TOKEN || GD_SB_KEY), 'Prefer':'count=exact', 'Range-Unit':'items', 'Range':'0-0'}});
     if (!r.ok) return null;
     const n = parseInt(((r.headers.get('content-range') || '').split('/')[1] || ''), 10);
     return isNaN(n) ? null : n;

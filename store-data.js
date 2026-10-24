@@ -224,7 +224,7 @@ async function gdDb(path, opts){
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
     const r = await fetch(GD_SB + path, Object.assign({}, opts, {
       signal: ctl.signal,
-      headers: Object.assign({'apikey': GD_SB_KEY, 'Authorization': 'Bearer ' + GD_SB_KEY, 'Content-Type': 'application/json'}, opts.headers || {})
+      headers: Object.assign({'apikey': GD_SB_KEY, 'Authorization': 'Bearer ' + ((typeof window !== 'undefined' && window.GD_AUTH_TOKEN) || GD_SB_KEY), 'Content-Type': 'application/json'}, opts.headers || {})
     }));
     clearTimeout(to);
     if (!r.ok) return null;
