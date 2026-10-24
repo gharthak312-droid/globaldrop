@@ -7,7 +7,7 @@
 const GD_STORE = {
   name: 'GlobalDrop',
   tagline: 'Shop the World, Delivered to Your Door',
-  announcement: 'Pakistan delivery Rs 139 per product · International shipping at actual courier freight + $1',
+  announcement: 'Shop 19,000+ products from around the world — delivered straight to your door.',
   commissionPct: 10, /* platform commission on seller sales */
   supportEmail: 'support@globaldrop.example',
   whatsapp: '0335-2710980'

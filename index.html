@@ -394,7 +394,7 @@ table.spec td:first-child{color:var(--mut);width:170px}
   <div id="coBody"></div>
 </div></div>
 <div id="toast"></div>
-<script src="store-data.js?v=7"></script>
+<script src="store-data.js?v=8"></script>
 <script src="gd-track.js"></script>
 <script>
 /* ============ GlobalDrop storefront app ============ */
@@ -695,6 +695,7 @@ function productView(id){
       ${!avail?`<div class="infobox" style="border-color:#fda29b;background:#fff5f4">⚠️ This product cannot be delivered to ${esc(gdCountry(S.country).name)}. Change your shipping country from the top bar to check other destinations.</div>`:''}
       ${(p.colors&&p.colors.length)?`<div class="optrow"><b>Color: <span id="selColor">${esc(pdpSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===pdpSel.color?'on':''}" onclick="pdpPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
       ${(p.sizes&&p.sizes.length)?`<div class="optrow"><b>Size: <span id="selSize">${esc(pdpSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===pdpSel.size?'on':''}" onclick="pdpPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      <div id="pdpOptsLive"></div>
       <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="pdpQty(-1)">−</button><input id="pdpQtyIn" value="1" readonly><button onclick="pdpQty(1)">+</button></span></div>
       ${!avail?`<div style="background:#FDECEC;border:1px solid #F0B4B4;color:#8F1D1D;border-radius:10px;padding:10px 12px;margin-top:14px;font-size:13.5px">🚫 <b>Not available in ${esc(gdCountry(S.country).name)}</b> — this product is listed for ${listedFor(p)} only. To buy it, change your country from the top bar.</div>`:''}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
@@ -723,6 +724,21 @@ function productView(id){
   </div>
   ${rel.length?`<div class="sec"><h2>Related Products</h2></div><div class="pgrid">${rel.map(cardHTML).join('')}</div>`:''}`;
   window.scrollTo(0,0);
+  /* CJ product without stored options: load its real variants live so the
+     customer can pick color/size (needed for live freight quotes + CJ order
+     pushes, which both confirm variants from the cart item's options). */
+  if (String(p.id).startsWith('cj_') && !(p.colors && p.colors.length) && !(p.sizes && p.sizes.length)) {
+    const box = document.getElementById('pdpOptsLive');
+    if (box) {
+      box.innerHTML = '<div style="font-size:13px;color:var(--mut)">Loading options…</div>';
+      gdLoadVariants(p).then(v => {
+        if (location.hash.split('/')[2] !== p.id) return;
+        if (!v || (!v.colors.length && !v.sizes.length)) { box.innerHTML = ''; return; }
+        pdpSel.color = v.colors[0] || ''; pdpSel.size = v.sizes[0] || '';
+        box.innerHTML = gdOptRows(v.colors, v.sizes, pdpSel, 'pdpPick', 'selColor', 'selSize');
+      });
+    }
+  }
 }
 function revHTML(r){
   return `<div class="rev"><div style="display:flex;gap:9px;align-items:center"><b>${esc(r.name)}</b>${r.verified?'<span class="chip pk">VERIFIED PURCHASE</span>':''}<span class="stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span><small style="color:var(--mut);margin-left:auto">${esc(r.date)}</small></div><p style="margin-top:6px;font-size:14px">${esc(r.text)}</p></div>`;
@@ -751,6 +767,7 @@ function openQV(id){
       <p style="color:var(--mut);font-size:13.5px">${esc((p.desc || '').slice(0, 150))}</p>
       ${(p.colors && p.colors.length) ? `<div class="optrow"><b>Color: <span id="qvColor">${esc(qvSel.color)}</span></b><div class="opts">${p.colors.map(c=>`<button class="opt ${c===qvSel.color?'on':''}" onclick="qvPick('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
       ${(p.sizes && p.sizes.length) ? `<div class="optrow"><b>Size: <span id="qvSize">${esc(qvSel.size)}</span></b><div class="opts">${p.sizes.map(c=>`<button class="opt ${c===qvSel.size?'on':''}" onclick="qvPick('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`:''}
+      <div id="qvOptsLive"></div>
       <div class="optrow"><b>Quantity</b><span class="qty"><button onclick="qvQty(-1)">−</button><input id="qvQtyIn" value="1" readonly><button onclick="qvQty(1)">+</button></span></div>
       ${!avail?`<div style="background:#FDECEC;border:1px solid #F0B4B4;color:#8F1D1D;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13.5px">🚫 <b>Not available in ${esc(gdCountry(S.country).name)}</b> — this product is listed for ${listedFor(p)} only.</div>`:''}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
@@ -762,6 +779,18 @@ function openQV(id){
     </div>
   </div>`;
   openModal('qvModal');
+  if (String(p.id).startsWith('cj_') && !(p.colors && p.colors.length) && !(p.sizes && p.sizes.length)) {
+    const box = document.getElementById('qvOptsLive');
+    if (box) {
+      box.innerHTML = '<div style="font-size:13px;color:var(--mut)">Loading options…</div>';
+      gdLoadVariants(p).then(v => {
+        if (qvSel.id !== p.id) return;
+        if (!v || (!v.colors.length && !v.sizes.length)) { box.innerHTML = ''; return; }
+        qvSel.color = v.colors[0] || ''; qvSel.size = v.sizes[0] || '';
+        box.innerHTML = gdOptRows(v.colors, v.sizes, qvSel, 'qvPick', 'qvColor', 'qvSize');
+      });
+    }
+  }
 }
 function qvPick(kind, val, el){ qvSel[kind] = val; el.parentElement.querySelectorAll('.opt').forEach(b => b.classList.remove('on')); el.classList.add('on'); const lbl = kind === 'color' ? $('#qvColor') : $('#qvSize'); if (lbl) lbl.textContent = val; }
 function qvQty(d){ qvSel.qty = Math.max(1, Math.min(99, qvSel.qty + d)); $('#qvQtyIn').value = qvSel.qty; }
@@ -812,6 +841,36 @@ function cartTotals(){
 const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
 let __gdFreight = {sig: '', cost: null, pending: false};
 const __gdFreightFailed = new Set();
+/* CJ products imported without colors/sizes show no option pickers, so cart
+   items carry no color/size and neither live freight quotes nor CJ order
+   pushes can confirm a variant. For such CJ products, load the real variants
+   live from CJ (cj-get passthrough) and derive pickers from variantKey parts,
+   exactly the way the edge function matches them: parts split on '-',
+   color = first part, size = second part. Single-variant products need no
+   pickers (the function auto-chooses the only variant). */
+const gdVarCache = {};
+async function gdLoadVariants(p){
+  if (!p || !String(p.id).startsWith('cj_')) return {colors:[], sizes:[]};
+  if ((p.colors && p.colors.length) || (p.sizes && p.sizes.length)) return {colors: p.colors || [], sizes: p.sizes || []};
+  if (gdVarCache[p.id]) return gdVarCache[p.id];
+  let out = {colors:[], sizes:[]};
+  try {
+    const pid = String(p.id).slice(3).replace(/_[A-Z]{2}$/, '');
+    const r = await fetch(GD_CJ_FN_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'cj-get', path:'/product/variant/query', params:{pid}})});
+    const j = await r.json();
+    const vs = (j && j.ok && j.data && Array.isArray(j.data.data)) ? j.data.data : [];
+    const all = vs.map(v => String(v.variantKey || v.variantNameEn || v.variantName || '').split('-').map(s => s.trim()).filter(Boolean)).filter(a => a.length);
+    if (all.length > 1) out = {colors: [...new Set(all.map(a => a[0]))], sizes: [...new Set(all.filter(a => a.length > 1).map(a => a[1]))]};
+  } catch(e) { /* live variant load failed: pickers stay hidden, fallback shipping applies */ }
+  gdVarCache[p.id] = out;
+  return out;
+}
+function gdOptRows(colors, sizes, sel, pickFn, colorLblId, sizeLblId){
+  let h = '';
+  if (colors.length) h += `<div class="optrow"><b>Color: <span id="${colorLblId}">${esc(sel.color)}</span></b><div class="opts">${colors.map(c=>`<button class="opt ${c===sel.color?'on':''}" onclick="${pickFn}('color','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`;
+  if (sizes.length) h += `<div class="optrow"><b>Size: <span id="${sizeLblId}">${esc(sel.size)}</span></b><div class="opts">${sizes.map(c=>`<button class="opt ${c===sel.size?'on':''}" onclick="${pickFn}('size','${esc(c)}',this)">${esc(c)}</button>`).join('')}</div></div>`;
+  return h;
+}
 function gdFreightCartItems(){
   if (S.country === 'PK') return null;
   const list = [];
