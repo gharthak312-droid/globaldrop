@@ -155,9 +155,13 @@ function gdCategories(){
 }
 function gdCountry(code){ return GD_COUNTRIES.find(c => c.code === code) || GD_COUNTRIES[0]; }
 function gdAvailable(p, code){ return p.countries === 'ALL' ? true : (Array.isArray(p.countries) && p.countries.includes(code)); }
-function gdShipping(countryCode, subtotalUSD){
+function gdShipping(countryCode, subtotalUSD, rates){
   if (subtotalUSD <= 0) return 0;
-  if (countryCode === 'PK') return subtotalUSD >= 30 ? 0 : 1.5;
+  /* Pakistan: Markaz charges a flat Rs 99 delivery, no free tier — so the
+     store charges exactly that. Returned as its USD equivalent at the
+     current PKR rate, so the PKR display is exactly Rs 99 (PKR rounds to
+     whole rupees). Other countries keep the CJ-freight model below. */
+  if (countryCode === 'PK') { const r = (rates && rates.PKR) || GD_FALLBACK_RATES.PKR || 280; return 99 / r; }
   return subtotalUSD >= 75 ? 0 : 6.99;
 }
 function gdDeliveryDays(p, countryCode){
