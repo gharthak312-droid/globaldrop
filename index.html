@@ -335,8 +335,6 @@ table.spec td:first-child{color:var(--mut);width:170px}
     <a class="md-link" href="#/shop">🛍️ All Products</a>
     <div class="md-sec">All Categories</div>
     <div id="menuTree"></div>
-    <div class="md-sec">Suppliers</div>
-    <div id="menuSup"></div>
     <hr class="md-hr">
     <a class="md-link" href="#/track">📦 Track Order</a>
     <a class="md-link" href="#/wishlist">❤️ Wishlist</a>
@@ -579,7 +577,6 @@ function shopView(params){
   const sort = params.get('sort') || 'pop';
   const featOnly = params.get('feat') === '1';
   const viewAll = params.get('view') === 'all';
-  const supF = params.get('sup') || '';
   const minP = parseFloat(params.get('min') || ''), maxP = parseFloat(params.get('max') || '');
   let list = P().filter(inCountry);
   if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (p.leaf||'').toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
@@ -588,7 +585,6 @@ function shopView(params){
   if (leafF) list = list.filter(p => (p.leaf || '') === leafF);
   if (saleOnly) list = list.filter(p => p.sale && p.sale < p.price);
   if (featOnly) list = list.filter(p => p.featured);
-  if (supF) list = list.filter(p => supKey(p.supplier) === supF);
   if (!isNaN(minP)) list = list.filter(p => effPrice(p) >= minP);
   if (!isNaN(maxP)) list = list.filter(p => effPrice(p) <= maxP);
   if (sort === 'low') list.sort((a,b)=>effPrice(a)-effPrice(b));
@@ -621,7 +617,7 @@ function shopView(params){
      products are grouped into sections of 30 with a More button under each,
      instead of one long 60-at-a-time grid. Sections with no products hide.
      Popular = the store's own Popular sort (featured first, then the rest). */
-  const showSections = !q && !catF && !subF && !leafF && !supF && !saleOnly && !featOnly && !viewAll && isNaN(minP) && isNaN(maxP) && sort === 'pop' && list.length;
+  const showSections = !q && !catF && !subF && !leafF && !saleOnly && !featOnly && !viewAll && isNaN(minP) && isNaN(maxP) && sort === 'pop' && list.length;
   let sectionsHTML = '';
   if (showSections) {
     const secs = [
@@ -639,9 +635,6 @@ function shopView(params){
       <h4>Categories</h4>
       <label class="${!catF?'act':''}"><input type="radio" name="fcat" ${!catF?'checked':''} onchange="shopGo('cat','')"> All categories</label>
       ${catsAvail.map(x=>`<label class="${catF===x.ct.slug?'act':''}"><input type="radio" name="fcat" ${catF===x.ct.slug?'checked':''} onchange="shopGo('cat','${x.ct.slug}')"> ${esc(x.ct.name)} (${x.n})</label>`).join('')}
-      <h4>Supplier</h4>
-      <label class="${!supF?'act':''}"><input type="radio" name="fsup" ${!supF?'checked':''} onchange="shopGo('sup','')"> All suppliers</label>
-      ${supList().map(v=>`<label class="${supF===v?'act':''}"><input type="radio" name="fsup" ${supF===v?'checked':''} onchange="shopGo('sup','${v}')"> ${esc(supLabel(v))}</label>`).join('')}
       <h4>Price (USD)</h4>
       <div class="f2"><input type="number" id="fMin" placeholder="Min" value="${isNaN(minP)?'':minP}"><input type="number" id="fMax" placeholder="Max" value="${isNaN(maxP)?'':maxP}"></div>
       <button class="btn ghost sm" style="margin-top:9px;width:100%" onclick="shopPrice()">Apply price</button>
@@ -1144,20 +1137,6 @@ window.addEventListener('gd:data', e => {
   if (kind === 'products' || kind === 'settings' || kind === 'reviews') route();
 });
 
-/* ---------- supplier labels (shared by drawer + shop filters) ---------- */
-/* Safety net: an old CSV may carry supplier 'Markaz' — it is always treated
-   as Pakistani local (sup=PK) and never shown under its own name. */
-function supKey(v){ return v === 'Markaz' ? 'PK' : v; }
-function supLabel(k){
-  return k==='CJ' ? 'International' : k==='PK' ? 'Pakistani local' : k==='SELLER' ? 'Local seller' : k;
-}
-function supList(){
-  const order = ['CJ','PK','SELLER'];
-  const keys = [...new Set(P().filter(inCountry).map(p => supKey(p.supplier)).filter(k => order.includes(k)))];
-  keys.sort((a,b) => order.indexOf(a) - order.indexOf(b));
-  return keys;
-}
-
 /* ---------- mobile hamburger menu ---------- */
 let menuBuilt = false, menuOpen = false;
 function buildMenuTree(){
@@ -1171,11 +1150,7 @@ function buildMenuTree(){
     return `<div class="md-row"><a class="md-link md-l1" href="#/cat/${ct.slug}">${esc(ct.name)}</a><button class="md-chev" data-t="l1-${i}" aria-label="Expand ${esc(ct.name)}">▸</button></div><div class="md-sub" id="md-l1-${i}">${subs}</div>`;
   }).join('');
 }
-function buildMenuSup(){
-  const el = document.getElementById('menuSup'); if (!el) return;
-  el.innerHTML = `<a class="md-link" href="#/shop">All suppliers</a>` + supList().map(v => `<a class="md-link" href="#/shop?sup=${encodeURIComponent(v)}">${esc(supLabel(v))}</a>`).join('');
-}
-function openMenu(){ buildMenuTree(); buildMenuSup(); const d = document.getElementById('menuDrawer'), o = document.getElementById('menuOverlay'); if (!d || !o) return; d.classList.add('open'); o.classList.add('open'); document.body.style.overflow = 'hidden'; menuOpen = true; }
+function openMenu(){ buildMenuTree(); const d = document.getElementById('menuDrawer'), o = document.getElementById('menuOverlay'); if (!d || !o) return; d.classList.add('open'); o.classList.add('open'); document.body.style.overflow = 'hidden'; menuOpen = true; }
 function closeMenu(){ const d = document.getElementById('menuDrawer'), o = document.getElementById('menuOverlay'); if (d) d.classList.remove('open'); if (o) o.classList.remove('open'); document.body.style.overflow = ''; menuOpen = false; }
 document.getElementById('menuBtn').addEventListener('click', openMenu);
 document.getElementById('menuClose').addEventListener('click', closeMenu);
