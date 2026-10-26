@@ -509,7 +509,7 @@ function vProducts(){
    (new dropshipper / reseller) appears automatically — no code change.
    Labels are admin-only (real names); customers never see this screen. */
 let supFilter = '', prodSearch = '';
-function supLabel(s){ return s === 'CJ' ? 'CJ (International)' : s === 'PK' ? 'Markaz (PK)' : (s || '—'); }
+function supLabel(s){ return s === 'CJ' ? 'CJ (International)' : s === 'PK' ? 'Markaz (PK)' : s === 'PKD' ? 'PK Dropship (PK)' : (s || '—'); }
 function supStats(){ const m = {}; gdProducts().forEach(p => { const s = p.supplier || ''; if (!s) return; m[s] = (m[s]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
 function setSupFilter(v){ supFilter = v; renderCatalog(); }
 function setProdSearch(v){ prodSearch = v; renderCatalog(); const el = $('#prodSearch'); if (el) { el.focus(); const l = el.value.length; try { el.setSelectionRange(l, l); } catch(e){} } }
