@@ -71,7 +71,7 @@ const GD_CAT_TREE = [
 /* DEMO CATALOG — development data so the store can be built and tested.
    Replace with real supplier products (CJ import / CSV / manual) from the admin panel.
    countries: 'ALL' = ships everywhere in the selector list; otherwise list of codes.
-   supplier: 'CJ' = CJ Dropshipping, 'PK' = Pakistani local supplier. */
+   supplier: 'CJ' = CJ Dropshipping, 'PK' = Pakistani local supplier (Markaz), 'PKD' = second Pakistani local supplier, separate shipping. */
 const GD_PRODUCTS = [
   {id:'p01', name:'Aurora Wireless Noise-Cancelling Headphones', cat:'electronics', sub:'Headphones and Earbuds', price:49.99, sale:34.99, img:'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80', supplier:'CJ', sku:'CJ-HP-1001', countries:['US'], colors:['Black','White','Blue'], sizes:[], desc:'Over-ear Bluetooth headphones with active noise cancellation, 40-hour battery and fast USB-C charging.', specs:{Battery:'40 hours', Bluetooth:'5.3', Weight:'250 g'}, stock:120, days:[5,9], featured:true, isNew:false},
   {id:'p02', name:'Pulse Buds Pro True Wireless Earbuds', cat:'electronics', sub:'Headphones and Earbuds', price:29.99, sale:19.99, img:'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80', supplier:'CJ', sku:'CJ-EB-1002', countries:['GB'], colors:['White','Black'], sizes:[], desc:'Compact wireless earbuds with deep bass, touch controls and a pocket charging case (24 hours total).', specs:{Battery:'24 hours (with case)', Rating:'IPX5'}, stock:300, days:[5,9], featured:true, isNew:true},
@@ -157,18 +157,25 @@ function gdCountry(code){ return GD_COUNTRIES.find(c => c.code === code) || GD_C
 function gdAvailable(p, code){ return p.countries === 'ALL' ? true : (Array.isArray(p.countries) && p.countries.includes(code)); }
 function gdShipping(countryCode, subtotalUSD, rates, items){
   if (subtotalUSD <= 0) return 0;
-  /* Pakistan: Markaz charges PER PRODUCT — Rs 139 for the first item of a
-     product + Rs 70 per additional item of the same product (verified on
-     Markaz product pages across categories and prices; listing pages do
-     not carry this figure). Returned as its USD equivalent at the current
-     PKR rate, so the PKR display is exact (PKR rounds to whole rupees).
+  /* Pakistan: two separate Pakistani suppliers, separate shipping.
+     Markaz (supplier 'PK') charges PER PRODUCT — Rs 139 for the first item
+     of a product + Rs 70 per additional item of the same product (verified
+     on Markaz product pages). PK Dropship (supplier 'PKD') charges Rs 199
+     flat PER PRODUCT LINE — quantity does not change it (owner decision
+     2026-10-27: "2 quantity se farq nai, product ek hi hai", Rs 199 per
+     product). Returned as its USD equivalent at the current PKR rate, so
+     the PKR display is exact (PKR rounds to whole rupees).
      Other countries keep the CJ-freight model below (live CJ freight
      quotes replace it separately). */
   if (countryCode === 'PK') {
     const r = (rates && rates.PKR) || GD_FALLBACK_RATES.PKR || 280;
     const list = Array.isArray(items) ? items : [];
     const feePKR = list.length
-      ? list.reduce((s, it) => s + 139 + 70 * (Math.max(1, Number(it.qty || it.ci?.qty || 1)) - 1), 0)
+      ? list.reduce((s, it) => {
+          const qty = Math.max(1, Number(it.qty || it.ci?.qty || 1));
+          const sup = it.p?.supplier || it.supplier || it.ci?.supplier || '';
+          return s + (sup === 'PKD' ? 199 : 139 + 70 * (qty - 1));
+        }, 0)
       : 139;
     return feePKR / r;
   }
@@ -179,8 +186,8 @@ function gdShipping(countryCode, subtotalUSD, rates, items){
 }
 function gdDeliveryDays(p, countryCode){
   const sup = p.supplier === 'Markaz' ? 'PK' : p.supplier; /* old CSV safety net: Markaz rows count as Pakistani local */
-  if (sup === 'PK' && countryCode === 'PK') return '2–4 working days';
-  if (sup === 'PK') return '5–9 working days';
+  if ((sup === 'PK' || sup === 'PKD') && countryCode === 'PK') return '2–4 working days';
+  if (sup === 'PK' || sup === 'PKD') return '5–9 working days';
   return (p.days ? p.days[0] : 7) + '–' + (p.days ? p.days[1] : 12) + ' working days';
 }
 
