@@ -4,14 +4,15 @@
    silently ignored — the store is never affected.
    Writes ONE visits row per visitor per day (PKT) and keeps a presence row
    fresh every 30s so the Admin > Stats view can show "online now".
-   Uses the same Supabase project + public publishable key as store-data.js;
-   the constants are duplicated here with local fallbacks so this file also
-   works if load order ever changes. */
+   Uses the same Neon Function base URL as store-data.js; the constants are
+   duplicated here with local fallbacks so this file also works if load order
+   ever changes. No API key — the Function needs none for guest writes. */
 (function(){
   'use strict';
   try {
-    var SB_URL = (typeof GD_SB_URL !== 'undefined' && GD_SB_URL) || 'https://orzsyrrckekegymjpalx.supabase.co';
-    var SB_KEY = (typeof GD_SB_KEY !== 'undefined' && GD_SB_KEY) || 'sb_publishable_lL4h47MDzjR8Gx2f0JCb8g_F738zRT4';
+    /* Neon Function base (migration 2026-11-11) — same /rest/v1/ paths as
+       before, no API key (the Function needs none for guest writes). */
+    var SB_URL = (typeof GD_SB_URL !== 'undefined' && GD_SB_URL) || 'https://br-aged-bread-az3f3idn-globaldropapi.compute.c-3.ap-southeast-1.aws.neon.tech';
     var REST = SB_URL + '/rest/v1/';
 
     var vid = null;
@@ -30,7 +31,7 @@
     function post(path, body, prefer){
       try {
         return fetch(REST + path, { method:'POST', keepalive:true,
-          headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer ' + SB_KEY, 'Content-Type':'application/json', 'Prefer':prefer },
+          headers:{ 'Content-Type':'application/json', 'Prefer':prefer },
           body: JSON.stringify(body) }).catch(function(){});
       } catch(e){}
     }

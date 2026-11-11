@@ -898,7 +898,12 @@ function cartTotals(){
    failure (slow CJ, cold start) must never kill live quotes for the whole
    session, which is what the old permanent failed-set did. Checkout never
    blocks on a quote — placeOrder uses the quoted total only when a matching
-   quote is present, else the fallback total. */
+   quote is present, else the fallback total.
+   NOTE (migration 2026-11-11): GD_SB_URL now points at the globaldropapi
+   Neon Function, so this derived URL is dead until Step 5 deploys the
+   cjsync Neon Function and repoints it — CJ calls fail until then
+   (Supabase is paused, so CJ is already unreachable). Do NOT "fix" this
+   line before Step 5. */
 const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
 let __gdFreight = {sig: '', cost: null, pending: false};
 const __gdFreightFailed = new Map(); /* sig -> failed-at timestamp (60s cooldown) */
@@ -1095,10 +1100,12 @@ function placeOrder(){
     sub: t.sub, disc: 0, ship: t.ship, total: t.total, cur: S.cur, payment: payMethod, status: 'Placed', tracking: ''
   };
   orders.unshift(order); gdSave('gd_orders', orders);
-  gdDbPostOrder(order); /* cloud copy — the local save above stays as fallback */
-  /* decrement stock in the live product list */
+  gdDbPostOrder(order); /* cloud copy — the local save above stays as fallback.
+     Stock decrements server-side inside the order insert (migration
+     2026-11-11), so there is no client-side stock write any more. */
+  /* decrement stock in the live product list (local cache only) */
   const prods = gdProducts();
-  t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) { p.stock = Math.max(0, p.stock - ci.qty); gdDbPatchStock(p.id, p.stock); } });
+  t.items.forEach(({ci}) => { const p = prods.find(x => x.id === ci.id); if (p) { p.stock = Math.max(0, p.stock - ci.qty); } });
   gdSave('gd_products', prods);
   S.cart = []; gdSave('gd_cart', []); paintChrome(); closeModal('coModal');
   location.hash = '#/confirm/' + order.id;
@@ -1133,7 +1140,15 @@ async function doTrack(){
   const ph = dg($('#trPhone').value);
   const match = o => { const op = dg(o.phone); return op && ph && (op === ph || op.slice(-10) === ph.slice(-10)); };
   let o = gdAllOrdersMerged().find(x => x.id.toUpperCase() === id && match(x));
-  if (!o) { const d = await gdDbGetOrder(id); if (d && match(d)) o = d; }
+  if (!o) {
+    /* Server matches the phone exactly against customer.phone, so try the
+       number as typed first, then the digits-only form (checkout stores the
+       number as typed; track may be typed differently). */
+    const rawPhone = ($('#trPhone').value || '').trim();
+    let d = rawPhone ? await gdDbGetOrder(id, rawPhone) : null;
+    if (!d && ph && ph !== rawPhone) d = await gdDbGetOrder(id, ph);
+    if (d && match(d)) o = d;
+  }
   $('#trOut').innerHTML = !o ? '<p style="color:var(--red);font-weight:600">Order not found — check the number and phone number.</p>' : (o.status === 'Deleted' ? `<div class="infobox" style="margin:0"><div>❌ <span><b>This order has been deleted by the store.</b></span></div>${o.delReason?`<div>📝 <span><b>Reason:</b> ${esc(o.delReason)}</span></div>`:''}<div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>` : `<div class="infobox" style="margin:0"><div>📦 <span><b>Status:</b> ${esc(o.status)}</span></div><div>🧾 <span><b>Items:</b> ${o.items.map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</span></div><div>🚚 <span><b>Tracking:</b> ${o.tracking?esc(o.tracking):'Tracking number will appear here once the supplier ships your order.'}</span></div><div>💰 <span><b>Total:</b> ${gdFmt(o.total, o.cur, S.rates)} (${o.payment==='cod'?'COD':'Card'})</span></div></div>`);
 }
 function wishlistView(){

@@ -137,7 +137,7 @@ const GD_FALLBACK_RATES = {USD:1, PKR:280, GBP:0.79, EUR:0.92, AED:3.67, SAR:3.7
 const gdLoad = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } };
 const gdSave = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
 
-/* Supabase in-memory caches (filled by the Stage-2 DB layer at the bottom of
+/* Neon in-memory caches (filled by the Stage-2 DB layer at the bottom of
    this file). While null, every reader falls back to localStorage / built-ins,
    so the store renders instantly and never renders empty on a network failure. */
 let __gdDbProducts = null, __gdDbReviews = null, __gdDbOrders = null, __gdRemoteSettings = null;
@@ -210,18 +210,22 @@ function gdFmt(usd, cur, rates){
 }
 function gdUid(prefix){ return prefix + Date.now().toString(36).toUpperCase() + Math.floor(Math.random()*90+10); }
 
-/* ================= Supabase cloud DB — Stage 2 =================
-   Project "globaldrop" (new Free organization). The publishable key is public
-   by design (same pattern as TopRankSM) and safe in site code.
+/* ================= Neon cloud DB (globaldropapi Function) — Stage 2 =================
+   Migrated from Supabase 2026-11-11. The Neon Function
+   (https://br-aged-bread-az3f3idn-globaldropapi.compute.c-3.ap-southeast-1.aws.neon.tech/)
+   replicates the old PostgREST paths (/rest/v1/products, /orders, ...), so the
+   code below is unchanged apart from the base URL. There is NO API key any
+   more: public reads and guest writes need no auth, and admin routes check
+   the Bearer session token server-side (window.GD_AUTH_TOKEN, set by the
+   admin sign-in in admin.html).
    Reads fill the in-memory caches above, then pages re-render via the
    'gd:data' window event (mirrors the live-FX refresh pattern).
    Writes go to REST and ALSO mirror to localStorage, so every screen keeps
    working if the network or the DB is unreachable.
    SECURITY: the owner's CJ email + CJ API key live ONLY in localStorage
-   (gd_settings.cjEmail / cjKey). They are NEVER sent to Supabase — the
+   (gd_settings.cjEmail / cjKey). They are NEVER sent to the Function — the
    settings sync below whitelists store-display fields only. */
-const GD_SB_URL = 'https://orzsyrrckekegymjpalx.supabase.co';
-const GD_SB_KEY = 'sb_publishable_lL4h47MDzjR8Gx2f0JCb8g_F738zRT4';
+const GD_SB_URL = 'https://br-aged-bread-az3f3idn-globaldropapi.compute.c-3.ap-southeast-1.aws.neon.tech';
 const GD_SB = GD_SB_URL + '/rest/v1/';
 
 function gdDbEmit(kind){ try { window.dispatchEvent(new CustomEvent('gd:data', {detail:{kind}})); } catch(e){} }
@@ -229,9 +233,14 @@ async function gdDb(path, opts){
   opts = opts || {};
   try {
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+    /* No API key: the Function needs none. The admin Bearer token is sent
+       only when a session exists (admin); guests send no auth header. */
+    const headers = {'Content-Type': 'application/json'};
+    const tok = (typeof window !== 'undefined' && window.GD_AUTH_TOKEN) || '';
+    if (tok) headers['Authorization'] = 'Bearer ' + tok;
     const r = await fetch(GD_SB + path, Object.assign({}, opts, {
       signal: ctl.signal,
-      headers: Object.assign({'apikey': GD_SB_KEY, 'Authorization': 'Bearer ' + ((typeof window !== 'undefined' && window.GD_AUTH_TOKEN) || GD_SB_KEY), 'Content-Type': 'application/json'}, opts.headers || {})
+      headers: Object.assign(headers, opts.headers || {})
     }));
     clearTimeout(to);
     if (!r.ok) return null;
@@ -361,8 +370,13 @@ async function gdDbFetchOrders(){
   if (Array.isArray(rows)) { __gdDbOrders = rows.map(gdRowToOrder); gdDbEmit('orders'); }
   return __gdDbOrders;
 }
-async function gdDbGetOrder(id){
-  const rows = await gdDb('orders?select=*&id=eq.' + encodeURIComponent(id));
+/* Track Order (guest): the Function requires the checkout phone and matches
+   it server-side against customer.phone (404 otherwise) — a bare id no
+   longer returns the order. Without a phone there is nothing to verify, so
+   return null without calling the server. */
+async function gdDbGetOrder(id, phone){
+  if (!phone) return null;
+  const rows = await gdDb('orders?select=*&id=eq.' + encodeURIComponent(id) + '&phone=' + encodeURIComponent(phone));
   return (Array.isArray(rows) && rows.length) ? gdRowToOrder(rows[0]) : null;
 }
 
@@ -389,10 +403,9 @@ async function gdDbReplaceCatalog(list){
   if (del === null) return false;
   return gdDbInsertProducts(list);
 }
-async function gdDbPatchStock(id, stock){
-  const res = await gdDb('products?id=eq.' + encodeURIComponent(id), {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({stock})});
-  return res !== null;
-}
+/* NOTE: gdDbPatchStock was deleted (migration 2026-11-11) — stock now
+   decrements server-side inside the order insert, so there is no guest
+   write path to products any more. */
 async function gdDbPostOrder(o){
   const row = {id:o.id, email:o.email, customer:gdOrderCustomer(o), items:o.items, country:o.country,
     subtotal:o.sub, shipping:o.ship, total:o.total, currency:o.cur, payment:o.payment, status:'Pending'};

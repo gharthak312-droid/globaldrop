@@ -52,7 +52,7 @@ small.hint{color:var(--mut);font-size:12px}
     <div class="fld"><input id="adEmail" type="email" placeholder="Admin email" autocomplete="email"></div>
     <div class="fld"><input id="adPass" type="password" placeholder="Password" autocomplete="current-password"></div>
     <button class="btn gold" style="width:100%" onclick="tryAuth()">Sign in</button>
-    <p style="font-size:12.5px;color:var(--mut);margin-top:12px">Admin account Supabase Dashboard → Authentication → Users se banta hai (is page se nahi).</p>
+    <p style="font-size:12.5px;color:var(--mut);margin-top:12px">Admin account Neon dashboard → Better Auth → Create user se banta hai (is page se nahi).</p>
   </div>
   <div id="pinBox" class="hidden">
     <p style="font-size:13px;color:var(--mut);margin-bottom:14px">Signed in as <b id="authEmail"></b> (email verified ✓)</p>
@@ -75,44 +75,55 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m){ const t=$('#toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',2300); }
 const pin = () => gdLoad('gd_admin_pin','1234');
-/* ---------- Admin auth: Supabase Auth (email + password) + mandatory email
-   verification + allowlist, with the existing PIN as a second layer. The panel
-   never opens on PIN alone any more. Sessions live in localStorage
-   (gd_admin_session); DB calls use the session token (window.GD_AUTH_TOKEN)
-   so that, once the RLS lockdown SQL is run, admin writes travel as
-   role=authenticated while the public storefront keeps the anon key. */
+/* ---------- Admin auth: Neon Function /auth/* (email + password) + mandatory
+   email verification + allowlist, with the existing PIN as a second layer. The
+   panel never opens on PIN alone any more. Sessions live in localStorage
+   (gd_admin_session); DB calls use the session token (window.GD_AUTH_TOKEN).
+   The sign-in route lives in the globaldropapi Function (auth-signin.mjs,
+   merged at deploy): it validates the password against neon_auth.account
+   (Better Auth scrypt), requires a verified admin email, and mints a row in
+   neon_auth.session. The token it returns IS the Bearer token for admin
+   routes. Refresh re-validates the stored token and extends its expiry, so
+   a refresh never logs the admin out.
+   (Migrated from Supabase Auth 2026-11-11 — see code-rewrite-plan.md §2.
+   Why not the Neon-hosted sign-in endpoint? Neon's Managed Better Auth
+   returns a JWT access_token plus an HTTP-only cookie holding the opaque
+   session token; a cross-origin static page cannot read that cookie, and
+   the JWT is not what the Function's session check accepts. Hence the
+   Function-hosted sign-in route.) */
 const GD_ADMIN_EMAILS = ['wadoodalizai@gmail.com'];
-const GD_AUTH_URL = GD_SB_URL + '/auth/v1/';
+const GD_AUTH_URL = GD_SB_URL + '/auth/';
 function gdAdminSession(){ try { return JSON.parse(localStorage.getItem('gd_admin_session') || 'null'); } catch(e){ return null; } }
 function gdAdminSaveSession(s){ try { localStorage.setItem('gd_admin_session', JSON.stringify(s)); } catch(e){} window.GD_AUTH_TOKEN = s ? s.access_token : null; }
 function showAuthBox(){ $('#authBox').classList.remove('hidden'); $('#pinBox').classList.add('hidden'); }
 function showPinBox(email){ $('#authEmail').textContent = email; $('#authBox').classList.add('hidden'); $('#pinBox').classList.remove('hidden'); }
 async function gdAuthFetch(path, body){
-  const r = await fetch(GD_AUTH_URL + path, {method:'POST', headers:{'apikey': GD_SB_KEY, 'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
-  const j = await r.json().catch(() => null);
-  return {ok: r.ok, data: j};
+  try {
+    const r = await fetch(GD_AUTH_URL + path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+    const j = await r.json().catch(() => null);
+    return {ok: r.ok, data: j};
+  } catch(e){ return {ok:false, data:null}; }
 }
 async function gdAuthUser(token){
-  try {
-    const r = await fetch(GD_AUTH_URL + 'user', {headers:{'apikey': GD_SB_KEY, 'Authorization':'Bearer ' + token}});
-    if (!r.ok) return null;
-    return await r.json();
-  } catch(e){ return null; }
+  /* Verifies the stored session token and returns the user
+     ({email, emailVerified, role}) or null. */
+  const res = await gdAuthFetch('session', {token});
+  if (!res.ok || !res.data || !res.data.user) return null;
+  return res.data.user;
 }
 async function tryAuth(){
   const email = ($('#adEmail').value || '').trim().toLowerCase();
   const pass = $('#adPass').value || '';
   if (!email || !pass) { toast('Email + password donon likho'); return; }
-  const res = await gdAuthFetch('token?grant_type=password', {email, password: pass});
+  const res = await gdAuthFetch('sign-in', {email, password: pass});
   if (!res.ok || !res.data || !res.data.access_token) {
-    if (res.data && (res.data.error_code === 'email_not_confirmed' || res.data.error === 'email_not_confirmed')) { toast('Email abhi verify nahi hui — inbox me verification link par click karo, phir sign in karo'); return; }
     toast('Sign in fail — email/password check karo'); return;
   }
   const u = await gdAuthUser(res.data.access_token);
   if (!u) { toast('Session verify nahi hui — dobara try karo'); return; }
   if (!GD_ADMIN_EMAILS.includes((u.email || '').toLowerCase())) { toast('Ye email admin ke liye allowed nahi hai'); return; }
-  if (!u.email_confirmed_at) { toast('Email abhi verify nahi hui — inbox me verification link par click karo, phir sign in karo'); return; }
-  gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: u.email});
+  if (!u.emailVerified) { toast('Email abhi verify nahi hui — Neon dashboard se verify karo, phir sign in karo'); return; }
+  gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token || res.data.access_token, expires_at: res.data.expires_at || (Date.now() + (res.data.expires_in || 604800) * 1000), email: u.email});
   showPinBox(u.email); toast('Signed in — ab PIN dalo');
 }
 function gdAdminOpenPanel(){ $('#gate').classList.add('hidden'); $('#panel').classList.remove('hidden'); show('overview'); }
@@ -122,9 +133,9 @@ async function gdAdminRestore(){
   if (!s || !s.access_token) { showAuthBox(); return; }
   if (s.expires_at && s.expires_at > Date.now()) { window.GD_AUTH_TOKEN = s.access_token; if (localStorage.getItem('gd_admin_unlocked') === '1') gdAdminOpenPanel(); else showPinBox(s.email || ''); return; }
   if (s.refresh_token) {
-    const res = await gdAuthFetch('token?grant_type=refresh_token', {refresh_token: s.refresh_token});
+    const res = await gdAuthFetch('refresh', {refresh_token: s.refresh_token});
     if (res.ok && res.data && res.data.access_token) {
-      gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token, expires_at: Date.now() + (res.data.expires_in || 3600) * 1000, email: s.email});
+      gdAdminSaveSession({access_token: res.data.access_token, refresh_token: res.data.refresh_token || res.data.access_token, expires_at: res.data.expires_at || (Date.now() + (res.data.expires_in || 604800) * 1000), email: s.email});
       if (localStorage.getItem('gd_admin_unlocked') === '1') gdAdminOpenPanel(); else showPinBox(s.email || '');
       return;
     }
@@ -300,12 +311,15 @@ function gdPktParts(ts){
 const gdPad2 = n => String(n).padStart(2, '0');
 function gdDayStrPkt(ts){ const p = gdPktParts(ts); return p.y + '-' + gdPad2(p.m) + '-' + gdPad2(p.d); }
 function gdDayStartPkt(ts){ const p = gdPktParts(ts); return Date.UTC(p.y, p.m - 1, p.d) - GD_PKT_OFF; }
-/* Row counter via PostgREST Content-Range — returns null when the table is
+/* Row counter — the Function returns {count: N} JSON (plus a Content-Range
+   header for the old reader). Returns null when the table is
    missing/unreachable so the Stats view can degrade gracefully. */
 async function gdCount(path){
   try {
-    const r = await fetch(GD_SB + path, {headers:{'apikey':GD_SB_KEY, 'Authorization':'Bearer ' + (window.GD_AUTH_TOKEN || GD_SB_KEY), 'Prefer':'count=exact', 'Range-Unit':'items', 'Range':'0-0'}});
+    const r = await fetch(GD_SB + path, {headers:{'Authorization':'Bearer ' + (window.GD_AUTH_TOKEN || ''), 'Content-Type':'application/json'}});
     if (!r.ok) return null;
+    const j = await r.json().catch(() => null);
+    if (j && typeof j.count === 'number') return j.count;
     const n = parseInt(((r.headers.get('content-range') || '').split('/')[1] || ''), 10);
     return isNaN(n) ? null : n;
   } catch(e){ return null; }
@@ -328,7 +342,7 @@ async function vStats(){
   const [vRows, pRows, vTotal] = await Promise.all([
     gdDb('visits?select=day,visitor&day=gte.' + d30Str + '&order=day.desc&limit=10000'),
     gdDb('presence?select=visitor,seen_at&seen_at=gte.' + encodeURIComponent(new Date(nowMs - 120000).toISOString())),
-    gdCount('visits?select=day')
+    gdCount('visits?count=1')
   ]);
   const viewersLive = Array.isArray(vRows) && Array.isArray(pRows) && vTotal !== null;
   let online = 0, vToday = 0, vWeek = 0, vMonth = 0, vAll = 0;
@@ -615,7 +629,7 @@ function vSettings(){
   <div class="card"><h3>Integrations — status</h3>
   <table><tr><th>Service</th><th>Status</th><th>What is needed</th></tr>
   <tr><td>CJ Dropshipping API</td><td>${st.cjKey?'<span class="pill g">Key saved</span>':'<span class="pill y">Not connected</span>'}</td><td>Your own CJ account. Product import + stock sync are LIVE in the CJ card under Settings. Orders with CJ products can be sent to CJ from the Orders tab — the CJ balance payment itself stays manual (My CJ).</td></tr>
-  <tr><td>Supabase (database)</td><td><span class="pill g">Connected</span></td><td>Project "globaldrop" — products, orders, reviews and store settings sync to the cloud DB; this browser keeps a local fallback copy.</td></tr>
+  <tr><td>Neon (database + auth)</td><td><span class="pill g">Connected</span></td><td>Project "GlobalDrop" — products, orders, reviews and store settings sync to the Neon cloud DB; this browser keeps a local fallback copy.</td></tr>
   <tr><td>Card payments</td><td><span class="pill y">Not connected</span></td><td>Payment provider account eligible for the business country (e.g. Whop/Stripe where supported).</td></tr>
   <tr><td>Exchange rates</td><td><span class="pill g">Live</span></td><td>open.er-api.com free rates, cached 12 hours, static fallback included.</td></tr></table></div>
   <div class="card"><h3>CJ Dropshipping — Your Supplier Account</h3>
@@ -658,15 +672,18 @@ function saveCj(){
 }
 
 /* ---------- CJ Dropshipping — sync function calls ----------
-   The Edge Function (cj-sync, deployed as "smooth-handler") talks to CJ with
+   The sync Function (cj-sync, deployed as "smooth-handler") talks to CJ with
    server-side secrets. cjEmail / cjKey are NEVER sent to it — the browser
-   only sends the action payload, authenticated with the public publishable
-   key (GD_SB_KEY from store-data.js). */
+   only sends the action payload, authenticated with the admin session token.
+   NOTE (migration 2026-11-11): GD_CJ_FN_URL still points at the old
+   Supabase functions path until Step 5 deploys the cjsync Neon Function —
+   CJ calls fail until then (Supabase is paused, so CJ is already
+   unreachable). Do NOT "fix" this line before Step 5. */
 const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
 async function gdCjCall(payload){
   try {
     const r = await fetch(GD_CJ_FN_URL, {method:'POST',
-      headers:{'Authorization':'Bearer ' + GD_SB_KEY, 'apikey': GD_SB_KEY, 'Content-Type':'application/json'},
+      headers:{'Authorization':'Bearer ' + (window.GD_AUTH_TOKEN || ''), 'Content-Type':'application/json'},
       body: JSON.stringify(payload)});
     const j = await r.json().catch(() => null);
     if (j && typeof j.ok === 'boolean') return j;
