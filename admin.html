@@ -679,7 +679,7 @@ function saveCj(){
    Supabase functions path until Step 5 deploys the cjsync Neon Function —
    CJ calls fail until then (Supabase is paused, so CJ is already
    unreachable). Do NOT "fix" this line before Step 5. */
-const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
+const GD_CJ_FN_URL = 'https://br-aged-bread-az3f3idn-cjsync.compute.c-3.ap-southeast-1.aws.neon.tech'; /* Neon cjsync Function (migration 2026-11-11) */
 async function gdCjCall(payload){
   try {
     const r = await fetch(GD_CJ_FN_URL, {method:'POST',

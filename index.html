@@ -904,7 +904,7 @@ function cartTotals(){
    cjsync Neon Function and repoints it — CJ calls fail until then
    (Supabase is paused, so CJ is already unreachable). Do NOT "fix" this
    line before Step 5. */
-const GD_CJ_FN_URL = GD_SB_URL + '/functions/v1/smooth-handler';
+const GD_CJ_FN_URL = 'https://br-aged-bread-az3f3idn-cjsync.compute.c-3.ap-southeast-1.aws.neon.tech'; /* Neon cjsync Function (migration 2026-11-11) */
 let __gdFreight = {sig: '', cost: null, pending: false};
 const __gdFreightFailed = new Map(); /* sig -> failed-at timestamp (60s cooldown) */
 /* CJ products imported without colors/sizes show no option pickers, so cart
